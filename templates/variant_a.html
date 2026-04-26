@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Encuentra tu Funda — Fundas Terex{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3" style="max-width:1100px;">
+
+    <!-- Hero / search -->
+    <div class="mb-3 text-center">
+        <h2 class="mb-1">Encuentra la funda para tu telefono</h2>
+        <p class="text-muted">Busca tu modelo y agrega al carrito. Te respondemos por WhatsApp.</p>
+    </div>
+
+    <!-- Search bar -->
+    <div class="mb-4">
+        <div class="position-relative">
+            <input type="text" id="modeloInput" class="form-control form-control-lg"
+                   placeholder="Buscar modelo de telefono..." autocomplete="off">
+            <div id="suggestions" class="list-group position-absolute w-100 shadow"
+                 style="z-index:1000; max-height:300px; overflow-y:auto; display:none;"></div>
+        </div>
+        <div class="d-flex align-items-center mt-2 gap-2">
+            <span id="resultCount" class="text-muted small"></span>
+            <div class="ms-auto d-flex gap-1">
+                <button class="btn btn-sm btn-outline-secondary sort-btn active" data-sort="default">Relevancia</button>
+                <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="stock">Stock</button>
+                <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="sold">Mas vendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="text-center py-5" style="display:none;">
+        <div class="spinner-border text-primary"></div>
+        <p class="text-muted mt-2">Cargando productos...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div id="emptyState" class="text-center py-5">
+        <i class="bi bi-search" style="font-size:4rem;color:#ddd;"></i>
+        <p class="text-muted mt-3 fs-5">Escribe un modelo para ver los estilos disponibles</p>
+    </div>
+
+    <!-- Product grid -->
+    <div id="productGrid" class="d-flex flex-column gap-3"></div>
+</div>
+
+<!-- Image modal -->
+<div class="modal fade" id="imgModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark">
+            <div class="modal-body p-0 text-center">
+                <img id="modalImg" src="" style="max-width:100%;max-height:85vh;object-fit:contain;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #modeloInput { border-radius:8px; font-size:1.1rem; }
+    #suggestions .list-group-item { cursor:pointer; }
+    #suggestions .list-group-item:hover, #suggestions .list-group-item.active { background:#0d6efd; color:#fff; }
+
+    .product-card {
+        display:flex; gap:16px; padding:14px; border:1px solid #e9ecef;
+        border-radius:10px; background:#fff; transition:box-shadow .15s;
+    }
+    .product-card:hover { box-shadow:0 2px 12px rgba(0,0,0,.08); }
+
+    .product-img-wrap {
+        width:140px; min-width:140px; height:140px; border-radius:8px;
+        overflow:hidden; background:#f5f5f5; display:flex; align-items:center;
+        justify-content:center; cursor:pointer; flex-shrink:0;
+    }
+    .product-img-wrap img { width:100%; height:100%; object-fit:cover; }
+    .product-img-wrap .no-photo { color:#bbb; font-size:.8rem; text-align:center; }
+
+    .product-info { flex:1; min-width:0; display:flex; flex-direction:column; }
+    .product-info h6 { margin:0 0 2px; font-size:1rem; }
+    .product-info .color-tag { font-size:.85rem; color:#666; }
+    .product-info .actions { margin-top:auto; padding-top:10px; display:flex; gap:6px; }
+
+    .metrics-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:10px; }
+    .metric-box { background:#f8f9fa; border-radius:6px; padding:6px 8px; text-align:center; }
+    .metric-box .val { font-weight:700; font-size:1rem; }
+    .metric-box .lbl { font-size:.65rem; color:#888; text-transform:uppercase; }
+
+    .badge-stock { font-size:.75rem; }
+
+    @media (max-width:576px) {
+        .product-card { flex-direction:column; align-items:center; }
+        .product-img-wrap { width:100%; max-width:200px; height:200px; }
+        .product-info .actions { flex-direction:column; }
+        .product-info .actions .btn { width:100%; }
+    }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('modeloInput');
+    const sugBox = document.getElementById('suggestions');
+    const grid = document.getElementById('productGrid');
+    const loading = document.getElementById('loading');
+    const emptyState = document.getElementById('emptyState');
+    const resultCount = document.getElementById('resultCount');
+
+    const allModelos = {{ modelos | tojson }};
+    let currentProducts = [];
+    let currentModelo = '';
+    let currentSort = 'default';
+    let activeIdx = -1;
+
+    // Pre-fill from ?modelo= in the URL (useful for ad campaigns linking to a specific phone)
+    const urlParams = new URLSearchParams(window.location.search);
+    const preModelo = urlParams.get('modelo');
+    if (preModelo) {
+        input.value = preModelo;
+        loadProducts(preModelo);
+    }
+
+    input.addEventListener('input', function() {
+        const q = this.value.trim().toLowerCase();
+        activeIdx = -1;
+        if (q.length < 1) { sugBox.style.display = 'none'; return; }
+        const matches = allModelos
+            .filter(m => m.modelo.toLowerCase().includes(q))
+            .slice(0, 15);
+        if (!matches.length) { sugBox.style.display = 'none'; return; }
+        sugBox.innerHTML = matches.map(m =>
+            `<button class="list-group-item list-group-item-action" data-modelo="${m.modelo}">
+                <strong>${m.modelo}</strong> <small class="text-muted ms-2">${m.marca || ''}</small>
+            </button>`
+        ).join('');
+        sugBox.style.display = 'block';
+    });
+
+    input.addEventListener('keydown', function(e) {
+        const items = sugBox.querySelectorAll('.list-group-item');
+        if (!items.length) {
+            if (e.key === 'Enter' && input.value.trim()) {
+                e.preventDefault();
+                loadProducts(input.value.trim());
+                sugBox.style.display = 'none';
+            }
+            return;
+        }
+        if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, items.length - 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); }
+        else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); items[activeIdx].click(); return; }
+        else if (e.key === 'Enter' && input.value.trim()) { e.preventDefault(); loadProducts(input.value.trim()); sugBox.style.display = 'none'; return; }
+        else return;
+        items.forEach((it, i) => it.classList.toggle('active', i === activeIdx));
+    });
+
+    sugBox.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-modelo]');
+        if (btn) {
+            const m = btn.dataset.modelo;
+            input.value = m;
+            sugBox.style.display = 'none';
+            loadProducts(m);
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!sugBox.contains(e.target) && e.target !== input) sugBox.style.display = 'none';
+    });
+
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentSort = this.dataset.sort;
+            renderProducts();
+        });
+    });
+
+    async function loadProducts(modelo) {
+        currentModelo = modelo;
+        loading.style.display = 'block';
+        emptyState.style.display = 'none';
+        grid.innerHTML = '';
+        resultCount.textContent = '';
+
+        try {
+            const resp = await fetch(`/api/products?modelo=${encodeURIComponent(modelo)}`);
+            const data = await resp.json();
+            currentProducts = data.products || [];
+            renderProducts();
+        } catch(err) {
+            grid.innerHTML = '<div class="alert alert-danger">Error cargando productos</div>';
+        }
+        loading.style.display = 'none';
+    }
+
+    function renderProducts() {
+        let items = [...currentProducts];
+        if (currentSort === 'stock') items.sort((a,b) => int(b.has_image)-int(a.has_image) || b.stock - a.stock);
+        else if (currentSort === 'sold') items.sort((a,b) => int(b.has_image)-int(a.has_image) || b.sold - a.sold);
+
+        if (!items.length) {
+            grid.innerHTML = '<div class="text-center py-4 text-muted">No hay productos con stock para este modelo. <br><a href="https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent('Hola, busco una funda para ' + currentModelo) + '" target="_blank">Preguntanos por WhatsApp</a></div>';
+            resultCount.textContent = '';
+            return;
+        }
+        resultCount.textContent = `${items.length} estilo${items.length>1?'s':''} encontrado${items.length>1?'s':''}`;
+
+        grid.innerHTML = items.map((p, idx) => {
+            const stockBadge = p.stock === 0
+                ? '<span class="badge bg-danger badge-stock">Agotado</span>'
+                : p.stock < 5
+                    ? `<span class="badge bg-warning text-dark badge-stock">Quedan ${p.stock}</span>`
+                    : `<span class="badge bg-success badge-stock">Disponible</span>`;
+            const dataAttr = `data-idx="${idx}"`;
+            return `
+            <div class="product-card">
+                <div class="product-img-wrap" ${p.image_url ? `onclick="showImage('${p.image_url}')"` : ''}>
+                    ${p.image_url
+                        ? `<img src="${p.image_url}" loading="lazy">`
+                        : '<div class="no-photo"><i class="bi bi-image" style="font-size:2rem;display:block;"></i>Sin foto</div>'
+                    }
+                </div>
+                <div class="product-info">
+                    <h6>${p.estilo}</h6>
+                    <div class="color-tag">${p.color} ${stockBadge}</div>
+                    <div class="metrics-grid">
+                        <div class="metric-box"><div class="val">${p.stock}</div><div class="lbl">Stock</div></div>
+                        <div class="metric-box"><div class="val">${p.sold}</div><div class="lbl">Vendidos</div></div>
+                        <div class="metric-box"><div class="val">${p.doi !== null ? p.doi+'d' : '-'}</div><div class="lbl">DOI</div></div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-primary btn-sm flex-fill" ${dataAttr} data-action="add" ${p.stock === 0 ? 'disabled' : ''}>
+                            <i class="bi bi-cart-plus"></i> Agregar
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" ${dataAttr} data-action="wa">
+                            <i class="bi bi-whatsapp"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        grid.querySelectorAll('[data-action="add"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const p = currentProducts[+this.dataset.idx];
+                addToCart({estilo: p.estilo, color: p.color, modelo: currentModelo, image_url: p.image_url});
+            });
+        });
+        grid.querySelectorAll('[data-action="wa"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const p = currentProducts[+this.dataset.idx];
+                const msg = `Hola, me interesa la funda ${p.estilo} ${p.color} para ${currentModelo}`;
+                trackEvent('whatsapp_click', {source: 'product', estilo: p.estilo, color: p.color, modelo: currentModelo});
+                window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+            });
+        });
+    }
+
+    function int(b) { return b ? 1 : 0; }
+
+    window.showImage = function(url) {
+        document.getElementById('modalImg').src = url;
+        new bootstrap.Modal(document.getElementById('imgModal')).show();
+    };
+});
+</script>
+{% endblock %}

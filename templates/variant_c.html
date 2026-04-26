@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Mayoreo y Menudeo — Fundas Terex{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3" style="max-width:1100px;">
+
+    <!-- Customer-type selector -->
+    <div id="ctypeSwitcher" class="d-flex justify-content-center gap-2 mb-3">
+        <button class="btn btn-outline-primary ctype-btn active" data-ctype="retail">
+            <i class="bi bi-person"></i> Compra individual
+        </button>
+        <button class="btn btn-outline-primary ctype-btn" data-ctype="wholesale">
+            <i class="bi bi-people"></i> Mayoreo
+        </button>
+    </div>
+
+    <div class="ctype-banner ctype-retail mb-4">
+        <h5><i class="bi bi-bag-check"></i> Compra individual</h5>
+        <p class="mb-0 small">Stock real, envio a todo Mexico, paga por transferencia o deposito en OXOXO.</p>
+    </div>
+    <div class="ctype-banner ctype-wholesale mb-4 d-none">
+        <h5><i class="bi bi-truck"></i> Compra al mayoreo</h5>
+        <p class="mb-0 small">Precios especiales desde 12 piezas. Te conectamos con un asesor por WhatsApp.</p>
+        <button class="btn btn-success btn-sm mt-2" id="wholesaleWaBtn">
+            <i class="bi bi-whatsapp"></i> Hablar con asesor de mayoreo
+        </button>
+    </div>
+
+    <!-- Search -->
+    <div class="mb-4">
+        <div class="position-relative">
+            <input type="text" id="modeloInput" class="form-control form-control-lg"
+                   placeholder="Buscar modelo de telefono..." autocomplete="off">
+            <div id="suggestions" class="list-group position-absolute w-100 shadow"
+                 style="z-index:1000; max-height:300px; overflow-y:auto; display:none;"></div>
+        </div>
+        <span id="resultCount" class="text-muted small mt-2 d-block"></span>
+    </div>
+
+    <div id="loading" class="text-center py-5" style="display:none;">
+        <div class="spinner-border text-primary"></div>
+    </div>
+    <div id="emptyState" class="text-center py-5">
+        <i class="bi bi-search" style="font-size:4rem;color:#ddd;"></i>
+        <p class="text-muted mt-3 fs-5">Busca tu modelo</p>
+    </div>
+
+    <div id="productGrid" class="d-flex flex-column gap-3"></div>
+</div>
+
+<div class="modal fade" id="imgModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark">
+            <div class="modal-body p-0 text-center">
+                <img id="modalImg" src="" style="max-width:100%;max-height:85vh;object-fit:contain;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .ctype-banner { padding:14px 16px; border-radius:10px; }
+    .ctype-retail { background:#e7f5ff; border:1px solid #74c0fc; }
+    .ctype-wholesale { background:#fff4e6; border:1px solid #ffd8a8; }
+    .ctype-btn.active { background:#0d6efd; color:#fff; }
+
+    #suggestions .list-group-item { cursor:pointer; }
+    #suggestions .list-group-item:hover, #suggestions .list-group-item.active { background:#0d6efd; color:#fff; }
+
+    .product-card {
+        display:flex; gap:16px; padding:14px; border:1px solid #e9ecef;
+        border-radius:10px; background:#fff;
+    }
+    .product-img-wrap {
+        width:120px; min-width:120px; height:120px; border-radius:8px;
+        overflow:hidden; background:#f5f5f5; cursor:pointer; flex-shrink:0;
+    }
+    .product-img-wrap img { width:100%; height:100%; object-fit:cover; }
+    .product-info { flex:1; min-width:0; }
+    .actions { display:flex; gap:6px; margin-top:8px; }
+    .price-box { font-weight:700; color:#198754; }
+
+    @media (max-width:576px) {
+        .product-card { flex-direction:column; }
+        .product-img-wrap { width:100%; height:180px; }
+    }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('modeloInput');
+    const sugBox = document.getElementById('suggestions');
+    const grid = document.getElementById('productGrid');
+    const loading = document.getElementById('loading');
+    const emptyState = document.getElementById('emptyState');
+    const resultCount = document.getElementById('resultCount');
+
+    const allModelos = {{ modelos | tojson }};
+    let currentProducts = [];
+    let currentModelo = '';
+    let customerType = 'retail';
+
+    document.querySelectorAll('.ctype-btn').forEach(b => b.addEventListener('click', function() {
+        document.querySelectorAll('.ctype-btn').forEach(x => x.classList.remove('active'));
+        this.classList.add('active');
+        customerType = this.dataset.ctype;
+        document.querySelector('.ctype-retail').classList.toggle('d-none', customerType !== 'retail');
+        document.querySelector('.ctype-wholesale').classList.toggle('d-none', customerType !== 'wholesale');
+        trackEvent('click', {action: 'ctype_switch', customer_type: customerType});
+        if (currentProducts.length) render();
+    }));
+
+    document.getElementById('wholesaleWaBtn').addEventListener('click', function() {
+        const msg = 'Hola, me interesa el catalogo de mayoreo de fundas';
+        trackEvent('whatsapp_click', {source: 'wholesale_banner', customer_type: 'wholesale'});
+        window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+    });
+
+    input.addEventListener('input', function() {
+        const q = this.value.trim().toLowerCase();
+        if (q.length < 1) { sugBox.style.display = 'none'; return; }
+        const matches = allModelos.filter(m => m.modelo.toLowerCase().includes(q)).slice(0, 15);
+        if (!matches.length) { sugBox.style.display = 'none'; return; }
+        sugBox.innerHTML = matches.map(m =>
+            `<button class="list-group-item list-group-item-action" data-modelo="${m.modelo}">
+                <strong>${m.modelo}</strong> <small class="text-muted ms-2">${m.marca || ''}</small>
+            </button>`
+        ).join('');
+        sugBox.style.display = 'block';
+    });
+    sugBox.addEventListener('click', e => {
+        const btn = e.target.closest('[data-modelo]');
+        if (btn) { input.value = btn.dataset.modelo; sugBox.style.display = 'none'; loadProducts(btn.dataset.modelo); }
+    });
+    document.addEventListener('click', e => {
+        if (!sugBox.contains(e.target) && e.target !== input) sugBox.style.display = 'none';
+    });
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && input.value.trim()) { e.preventDefault(); loadProducts(input.value.trim()); sugBox.style.display = 'none'; }
+    });
+
+    async function loadProducts(modelo) {
+        currentModelo = modelo;
+        loading.style.display = 'block';
+        emptyState.style.display = 'none';
+        grid.innerHTML = '';
+        try {
+            const r = await fetch(`/api/products?modelo=${encodeURIComponent(modelo)}`);
+            const d = await r.json();
+            currentProducts = d.products || [];
+            render();
+        } catch(e) { grid.innerHTML = '<div class="alert alert-danger">Error</div>'; }
+        loading.style.display = 'none';
+    }
+
+    function render() {
+        if (!currentProducts.length) {
+            grid.innerHTML = `<div class="text-center py-4 text-muted">Sin stock. <a href="https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Buscan funda '+currentModelo)}" target="_blank">Preguntanos</a></div>`;
+            resultCount.textContent = '';
+            return;
+        }
+        const isWholesale = customerType === 'wholesale';
+        resultCount.textContent = `${currentProducts.length} estilos para ${currentModelo}` + (isWholesale ? ' · precios de mayoreo por WhatsApp' : '');
+
+        grid.innerHTML = currentProducts.map((p, idx) => `
+            <div class="product-card">
+                <div class="product-img-wrap" ${p.image_url ? `onclick="showImage('${p.image_url}')"` : ''}>
+                    ${p.image_url ? `<img src="${p.image_url}" loading="lazy">` : '<div class="text-center text-muted small p-3"><i class="bi bi-image" style="font-size:1.5rem;display:block;"></i>Sin foto</div>'}
+                </div>
+                <div class="product-info">
+                    <h6>${p.estilo}</h6>
+                    <div class="text-muted small">${p.color}</div>
+                    <div class="small mt-1">${p.stock > 0 ? `<span class="badge bg-success">${p.stock} disponibles</span>` : '<span class="badge bg-danger">Agotado</span>'}</div>
+                    <div class="actions">
+                        ${isWholesale
+                          ? `<button class="btn btn-success btn-sm flex-fill" data-idx="${idx}" data-action="wa-bulk">
+                                <i class="bi bi-whatsapp"></i> Cotizar mayoreo
+                             </button>`
+                          : `<button class="btn btn-primary btn-sm flex-fill" data-idx="${idx}" data-action="add" ${p.stock === 0 ? 'disabled' : ''}>
+                                <i class="bi bi-cart-plus"></i> Agregar
+                             </button>
+                             <button class="btn btn-outline-success btn-sm" data-idx="${idx}" data-action="wa">
+                                <i class="bi bi-whatsapp"></i>
+                             </button>`
+                        }
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        grid.querySelectorAll('[data-action="add"]').forEach(b => b.addEventListener('click', function() {
+            const p = currentProducts[+this.dataset.idx];
+            addToCart({estilo: p.estilo, color: p.color, modelo: currentModelo, image_url: p.image_url});
+        }));
+        grid.querySelectorAll('[data-action="wa"]').forEach(b => b.addEventListener('click', function() {
+            const p = currentProducts[+this.dataset.idx];
+            trackEvent('whatsapp_click', {source: 'product', estilo: p.estilo, color: p.color, modelo: currentModelo, customer_type: 'retail'});
+            window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(`Hola, me interesa ${p.estilo} ${p.color} para ${currentModelo}`)}`, '_blank');
+        }));
+        grid.querySelectorAll('[data-action="wa-bulk"]').forEach(b => b.addEventListener('click', function() {
+            const p = currentProducts[+this.dataset.idx];
+            const msg = `Hola, quiero cotizar al mayoreo: ${p.estilo} ${p.color} para ${currentModelo} (cantidad: ___)`;
+            trackEvent('whatsapp_click', {source: 'product', estilo: p.estilo, color: p.color, modelo: currentModelo, customer_type: 'wholesale'});
+            window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }));
+    }
+
+    window.showImage = function(url) {
+        document.getElementById('modalImg').src = url;
+        new bootstrap.Modal(document.getElementById('imgModal')).show();
+    };
+
+    const pre = new URLSearchParams(window.location.search).get('modelo');
+    if (pre) { input.value = pre; loadProducts(pre); }
+});
+</script>
+{% endblock %}
