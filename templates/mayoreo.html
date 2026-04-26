@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Mayoreo — Fundas Terex{% endblock %}
+
+{% block content %}
+<section class="hero-m">
+    <div class="container-x">
+        <p class="eyebrow">Para tu negocio</p>
+        <h1 class="display hero-m-title">FUNDAS<br>AL <span style="color:var(--accent);">MAYOREO.</span></h1>
+        <p class="hero-m-sub">Surte tu tienda con stock real y precios escalonados. Te conectamos con un asesor por WhatsApp.</p>
+        <a class="pill wa lg" target="_blank"
+           href="https://wa.me/{{ wa_number }}?text={{ 'Hola, me interesa el catalogo de mayoreo'|urlencode }}"
+           onclick="trackEvent('whatsapp_click',{source:'mayoreo_hero'})">
+            <i class="bi bi-whatsapp"></i> Hablar con un asesor
+        </a>
+    </div>
+</section>
+
+<section class="benefits">
+    <div class="container-x">
+        <div class="bgrid">
+            <div class="bcard">
+                <div class="num">01</div>
+                <h6>PRECIOS ESCALONADOS</h6>
+                <p>Mejor precio mientras mas piezas, desde 12 unidades</p>
+            </div>
+            <div class="bcard">
+                <div class="num">02</div>
+                <h6>STOCK REAL</h6>
+                <p>Inventario actualizado desde nuestro sistema. Si lo ves, esta disponible.</p>
+            </div>
+            <div class="bcard">
+                <div class="num">03</div>
+                <h6>ENVIO NACIONAL</h6>
+                <p>Despachamos a todo Mexico. Te llega rapido y bien empaquetado.</p>
+            </div>
+            <div class="bcard">
+                <div class="num">04</div>
+                <h6>FLEXIBILIDAD DE PAGO</h6>
+                <p>Transferencia, deposito en OXOXO o efectivo en tienda.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="cta-form">
+    <div class="container-x form-shell">
+        <h2 class="display">Cuentanos de tu negocio</h2>
+        <p class="form-sub">Te llamamos o escribimos por WhatsApp en menos de 24h.</p>
+
+        <form id="wholesaleForm" class="wform">
+            <div class="row2">
+                <input type="text" name="name" placeholder="Tu nombre" required>
+                <input type="text" name="business" placeholder="Nombre de tu negocio">
+            </div>
+            <div class="row2">
+                <input type="tel" name="phone" placeholder="Telefono / WhatsApp" required>
+                <input type="email" name="email" placeholder="Correo (opcional)">
+            </div>
+            <select name="volume" required>
+                <option value="">Volumen mensual aproximado</option>
+                <option value="12-50">12 a 50 piezas</option>
+                <option value="50-200">50 a 200 piezas</option>
+                <option value="200-500">200 a 500 piezas</option>
+                <option value="500+">500+ piezas</option>
+            </select>
+            <textarea name="notes" rows="3" placeholder="Que modelos te interesan? (iPhone, Samsung, Motorola...)"></textarea>
+            <input type="hidden" name="customer_type" value="wholesale">
+            <input type="hidden" name="source" value="mayoreo_form">
+            <button type="submit" class="pill lg" style="width:100%;">
+                <i class="bi bi-send"></i> Quiero que me contacten
+            </button>
+            <p id="wOk" class="ok-msg" style="display:none;">
+                Listo. Te contactamos pronto via WhatsApp o correo.
+            </p>
+        </form>
+    </div>
+</section>
+
+<style>
+    .hero-m { padding: 80px 0 56px; text-align: center; }
+    .hero-m-title { margin-bottom: 18px; }
+    .hero-m-sub { color: var(--muted); max-width: 560px; margin: 0 auto 28px; }
+
+    .benefits { padding: 56px 0; background: var(--soft); }
+    .bgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    @media (max-width: 800px) { .bgrid { grid-template-columns: repeat(2, 1fr); } }
+    .bcard {
+        background: var(--paper); border-radius: 16px; padding: 24px;
+    }
+    .bcard .num {
+        font-size: 1.6rem; font-weight: 800; color: var(--accent);
+        letter-spacing: -.02em; margin-bottom: 12px;
+    }
+    .bcard h6 {
+        font-size: .78rem; font-weight: 700; letter-spacing: .14em;
+        text-transform: uppercase; margin: 0 0 8px;
+    }
+    .bcard p { font-size: .9rem; color: var(--muted); margin: 0; }
+
+    .cta-form { padding: 64px 0 96px; }
+    .form-shell { max-width: 640px; }
+    .form-shell h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin-bottom: 8px; }
+    .form-sub { color: var(--muted); margin-bottom: 28px; }
+    .wform { display: flex; flex-direction: column; gap: 12px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .row2 { grid-template-columns: 1fr; } }
+    .wform input, .wform select, .wform textarea {
+        width: 100%; padding: 14px 16px; border: 1px solid var(--line);
+        border-radius: 12px; font-family: inherit; font-size: .95rem;
+        outline: none; background: var(--paper);
+    }
+    .wform input:focus, .wform select:focus, .wform textarea:focus {
+        border-color: var(--ink);
+    }
+    .ok-msg { color: #1a8c4a; font-weight: 500; text-align: center; }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('wholesaleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const fd = new FormData(this);
+    const notes = `Negocio: ${fd.get('business') || '—'} | Volumen: ${fd.get('volume') || '—'} | ${fd.get('notes') || ''}`;
+    fd.append('notes_full', notes);
+
+    // Pack into the existing /api/lead schema (notes go into metadata)
+    const r = await fetch('/api/lead', {method: 'POST', body: fd});
+    if (r.ok) {
+        this.reset();
+        document.getElementById('wOk').style.display = 'block';
+        trackEvent('lead_submit', {source: 'mayoreo_form'});
+        // Also offer immediate WhatsApp follow-up
+        setTimeout(() => {
+            const msg = `Hola, soy ${fd.get('name')} y acabo de mandar el formulario de mayoreo. Mi negocio: ${fd.get('business') || '(sin nombre)'}, busco ${fd.get('volume') || ''} piezas.`;
+            window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }, 800);
+    } else {
+        alert('Hubo un error. Intenta de nuevo o escribenos por WhatsApp.');
+    }
+});
+</script>
+{% endblock %}

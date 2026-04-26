@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}404 — Pagina no encontrada{% endblock %}
+
+{% block content %}
+<section class="nf-section">
+    <div class="container-x nf-wrap">
+        <p class="eyebrow">Error 404</p>
+        <h1 class="display nf-title">PAGE<br>NOT <span style="color:var(--accent);">FOUND.</span></h1>
+        <p class="nf-sub">La pagina que buscas no existe o se movio. Pero seguro tu telefono si tiene funda con nosotros.</p>
+        <div class="nf-actions">
+            <a class="pill lg" href="/">Volver al catalogo</a>
+            <a class="pill wa lg" target="_blank"
+               href="https://wa.me/{{ wa_number }}?text={{ wa_default_msg|urlencode }}"
+               onclick="trackEvent('whatsapp_click',{source:'404'})">
+                <i class="bi bi-whatsapp"></i> Escribenos
+            </a>
+        </div>
+    </div>
+</section>
+
+<style>
+    .nf-section { padding: 96px 0; text-align: center; }
+    .nf-title { font-size: clamp(3rem, 9vw, 6.5rem); margin-bottom: 24px; }
+    .nf-sub { color: var(--muted); max-width: 480px; margin: 0 auto 32px; }
+    .nf-actions { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+</style>
+{% endblock %}

@@ -6,18 +6,20 @@ Standalone FastAPI app that reads the same Supabase project as the inventory app
 """
 
 import os
-import json
-import random
+import re
+import time
 import secrets
 import asyncio
 from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, HTTPException, Form, Query
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, Request, HTTPException, Form, Depends
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import random
 
 load_dotenv()
 
@@ -29,6 +31,9 @@ WHATSAPP_DEFAULT_MESSAGE = os.environ.get(
     "Hola, vi su catalogo de fundas y me interesa",
 )
 BUSINESS_PHONE = os.environ.get("BUSINESS_PHONE", "525545174085")
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+PUBLIC_URL = os.environ.get("PUBLIC_URL", "")  # for OG tags; e.g. https://landing.terex.mx
 
 if not SUPABASE_KEY:
     raise RuntimeError(
@@ -45,10 +50,12 @@ HEADERS = {
 VARIANTS = ("A", "B", "C")
 SESSION_COOKIE = "lp_sid"
 VARIANT_COOKIE = "lp_variant"
+MODELOS_CACHE_TTL = 300  # 5 minutes
 
 app = FastAPI(title="Phone Cases — Landing Page")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+basic_auth = HTTPBasic()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -79,6 +86,18 @@ async def supabase_post(path: str, json_data, params: Optional[dict] = None):
         # Don't crash the page on logging errors — log and continue.
         print(f"[supabase_post {path}] {resp.status_code} {resp.text}")
         return None
+    return resp.json()
+
+
+async def supabase_rpc(name: str, params: Optional[dict] = None):
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/{name}",
+            headers=HEADERS,
+            json=params or {},
+        )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"RPC {name}: {resp.text}")
     return resp.json()
 
 
@@ -124,15 +143,46 @@ async def log_event(
     await supabase_post("landing_events", [payload])
 
 
+def set_session_cookies(response, session_id: str, variant: Optional[str] = None):
+    response.set_cookie(SESSION_COOKIE, session_id, max_age=60 * 60 * 24 * 90, httponly=True, samesite="lax")
+    if variant:
+        response.set_cookie(VARIANT_COOKIE, variant, max_age=60 * 60 * 24 * 30, samesite="lax")
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Catalog data (ported from inventory app's /api/browse-modelo)
 # ──────────────────────────────────────────────────────────────────────────────
 
+# In-memory cache for modelos list — fetched on every page render otherwise.
+# Acceptable since the data is small (<5 KB), changes infrequently, and a 5-min
+# stale window is fine for a public landing page.
+_modelos_cache: dict = {"data": None, "ts": 0}
+_modelos_lock = asyncio.Lock()
+
+
 async def fetch_modelos():
-    return await supabase_get(
-        "inventario_modelos",
-        params={"select": "id,modelo,marca", "order": "modelo.asc"},
-    )
+    now = time.time()
+    if _modelos_cache["data"] is not None and (now - _modelos_cache["ts"]) < MODELOS_CACHE_TTL:
+        return _modelos_cache["data"]
+
+    async with _modelos_lock:
+        # double-check after acquiring lock
+        if _modelos_cache["data"] is not None and (time.time() - _modelos_cache["ts"]) < MODELOS_CACHE_TTL:
+            return _modelos_cache["data"]
+        data = await supabase_get(
+            "inventario_modelos",
+            params={"select": "id,modelo,marca", "order": "modelo.asc"},
+        )
+        _modelos_cache["data"] = data
+        _modelos_cache["ts"] = time.time()
+        return data
+
+
+def slugify(text: str) -> str:
+    """URL-safe slug: lowercase, hyphens, alphanumeric only."""
+    s = text.strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    return s.strip("-")
 
 
 async def fetch_products_for_modelo(modelo: str, days: int = 30):
@@ -228,6 +278,16 @@ async def fetch_products_for_modelo(modelo: str, days: int = 30):
     return products
 
 
+def shared_template_ctx(request: Request, **extra) -> dict:
+    return {
+        "wa_number": WHATSAPP_NUMBER,
+        "wa_default_msg": WHATSAPP_DEFAULT_MESSAGE,
+        "business_phone": BUSINESS_PHONE,
+        "public_url": PUBLIC_URL or str(request.base_url).rstrip("/"),
+        **extra,
+    }
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Routes — A/B router
 # ──────────────────────────────────────────────────────────────────────────────
@@ -240,11 +300,10 @@ async def root(request: Request, v: Optional[str] = None):
 
     qs = dict(request.query_params)
     qs.pop("v", None)
-    qs_str = ("?" + "&".join(f"{k}={v}" for k, v in qs.items())) if qs else ""
+    qs_str = ("?" + "&".join(f"{k}={val}" for k, val in qs.items())) if qs else ""
 
     response = RedirectResponse(url=f"/v/{variant}{qs_str}", status_code=302)
-    response.set_cookie(SESSION_COOKIE, session_id, max_age=60 * 60 * 24 * 90, httponly=True, samesite="lax")
-    response.set_cookie(VARIANT_COOKIE, variant, max_age=60 * 60 * 24 * 30, samesite="lax")
+    set_session_cookies(response, session_id, variant)
     return response
 
 
@@ -259,21 +318,62 @@ async def variant_page(request: Request, variant: str):
 
     await log_event(request, session_id, variant, "pageview")
 
-    template_name = f"variant_{variant.lower()}.html"
     response = templates.TemplateResponse(
         request=request,
-        name=template_name,
-        context={
-            "modelos": modelos,
-            "variant": variant,
-            "wa_number": WHATSAPP_NUMBER,
-            "wa_default_msg": WHATSAPP_DEFAULT_MESSAGE,
-            "business_phone": BUSINESS_PHONE,
-            "session_id": session_id,
-        },
+        name=f"variant_{variant.lower()}.html",
+        context=shared_template_ctx(
+            request,
+            modelos=modelos,
+            variant=variant,
+            session_id=session_id,
+        ),
     )
-    response.set_cookie(SESSION_COOKIE, session_id, max_age=60 * 60 * 24 * 90, httponly=True, samesite="lax")
-    response.set_cookie(VARIANT_COOKIE, variant, max_age=60 * 60 * 24 * 30, samesite="lax")
+    set_session_cookies(response, session_id, variant)
+    return response
+
+
+@app.get("/p/{slug}", response_class=HTMLResponse)
+async def phone_model_deep_link(request: Request, slug: str):
+    """SEO-friendly + ad-friendly deep link, e.g. /p/iphone-15.
+
+    Resolves slug to a modelo, redirects to the assigned variant with `?modelo=` set.
+    """
+    modelos = await fetch_modelos()
+    target_slug = slugify(slug)
+    matched = next((m for m in modelos if slugify(m["modelo"]) == target_slug), None)
+    if not matched:
+        # try partial match
+        matched = next(
+            (m for m in modelos if target_slug in slugify(m["modelo"])),
+            None,
+        )
+
+    session_id = get_or_create_session_id(request)
+    variant = assign_variant(request, request.query_params.get("v"))
+
+    qs = dict(request.query_params)
+    qs.pop("v", None)
+    if matched:
+        qs["modelo"] = matched["modelo"]
+    qs_str = ("?" + "&".join(f"{k}={val}" for k, val in qs.items())) if qs else ""
+
+    response = RedirectResponse(url=f"/v/{variant}{qs_str}", status_code=302)
+    set_session_cookies(response, session_id, variant)
+    return response
+
+
+@app.get("/mayoreo", response_class=HTMLResponse)
+async def mayoreo_page(request: Request):
+    """Dedicated wholesale lead-capture page. Variant-independent — useful for
+    targeted ads aimed at resellers / business buyers."""
+    session_id = get_or_create_session_id(request)
+    await log_event(request, session_id, None, "pageview", metadata={"page": "mayoreo"})
+    response = templates.TemplateResponse(
+        request=request,
+        name="mayoreo.html",
+        context=shared_template_ctx(request, session_id=session_id),
+    )
+    set_session_cookies(response, session_id)
     return response
 
 
@@ -324,6 +424,7 @@ async def api_lead(
     name: Optional[str] = Form(None),
     customer_type: Optional[str] = Form(None),
     source: Optional[str] = Form("inline_form"),
+    notes: Optional[str] = Form(None),
 ):
     if not email and not phone:
         raise HTTPException(status_code=400, detail="email or phone required")
@@ -339,12 +440,89 @@ async def api_lead(
         "source": source,
         "utm_source": request.query_params.get("utm_source"),
         "utm_campaign": request.query_params.get("utm_campaign"),
+        "metadata": {"notes": notes} if notes else None,
     }
     await supabase_post("landing_leads", [payload])
     await log_event(request, session_id, variant, "lead_submit", metadata={"source": source})
     return {"ok": True}
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Admin
+# ──────────────────────────────────────────────────────────────────────────────
+
+def require_admin(credentials: HTTPBasicCredentials = Depends(basic_auth)):
+    if not ADMIN_PASSWORD:
+        raise HTTPException(
+            status_code=503,
+            detail="ADMIN_PASSWORD not set in env. Admin pages disabled.",
+        )
+    user_ok = secrets.compare_digest(credentials.username.encode(), ADMIN_USERNAME.encode())
+    pass_ok = secrets.compare_digest(credentials.password.encode(), ADMIN_PASSWORD.encode())
+    if not (user_ok and pass_ok):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
+@app.get("/admin/funnel", response_class=HTMLResponse)
+async def admin_funnel(request: Request, days: int = 14, _user: str = Depends(require_admin)):
+    """A/B test funnel readout — variant comparison from landing_funnel_summary RPC."""
+    try:
+        summary = await supabase_rpc("landing_funnel_summary", {"p_days": days})
+    except HTTPException:
+        # RPC may not exist yet — show empty state with hint to run migrations
+        summary = []
+
+    total_leads = await supabase_get(
+        "landing_leads",
+        params={"select": "id", "order": "created_at.desc"},
+        range_header="0-9999",
+    )
+    recent_events = await supabase_get(
+        "landing_events",
+        params={"select": "created_at,variant,event_type,modelo,wa_phone,utm_source,utm_campaign",
+                "order": "created_at.desc"},
+        range_header="0-99",
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin_funnel.html",
+        context={
+            "summary": summary,
+            "days": days,
+            "total_leads": len(total_leads),
+            "recent_events": recent_events,
+        },
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Misc / SEO
+# ──────────────────────────────────────────────────────────────────────────────
+
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots():
+    return "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n"
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    # Only render the HTML 404 for browser navigations, JSON for API paths.
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return templates.TemplateResponse(
+        request=request,
+        name="404.html",
+        context=shared_template_ctx(request, session_id=get_or_create_session_id(request)),
+        status_code=404,
+    )

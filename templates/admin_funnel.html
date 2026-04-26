@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>A/B Funnel — Terex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --ink: #000; --paper: #fff; --soft: #f5f5f5; --line: #e5e5e5; --muted: #888; --accent: #ff3b30; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--paper); color: var(--ink); }
+        header { padding: 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; }
+        header h1 { font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+        header .meta { font-size: .85rem; color: var(--muted); }
+        main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+        section { margin-bottom: 48px; }
+        h2 { font-size: 1.1rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin: 0 0 16px; }
+
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+        @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--paper); border: 1px solid var(--line);
+            border-radius: 16px; padding: 24px; position: relative;
+        }
+        .card.winner { border-color: var(--ink); box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+        .card .label { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
+        .card .vname { font-size: 2.4rem; font-weight: 800; letter-spacing: -.02em; margin: 4px 0 16px; }
+        .winner-badge {
+            position: absolute; top: 16px; right: 16px;
+            background: var(--ink); color: var(--paper);
+            padding: 4px 10px; border-radius: 999px;
+            font-size: .65rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600;
+        }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-row .key { color: var(--muted); }
+        .stat-row .val { font-weight: 600; }
+        .conv { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+
+        .empty { padding: 40px; text-align: center; color: var(--muted); background: var(--soft); border-radius: 16px; }
+        .empty code { background: #fff; padding: 2px 6px; border-radius: 4px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+        th { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+        tr:hover td { background: var(--soft); }
+
+        .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .7rem; font-weight: 600; }
+        .pill.A { background: #e3f2fd; color: #0d47a1; }
+        .pill.B { background: #f3e5f5; color: #4a148c; }
+        .pill.C { background: #fff3e0; color: #e65100; }
+        .pill.evt { background: var(--soft); color: var(--ink); }
+
+        .switcher { display: inline-flex; gap: 4px; }
+        .switcher a {
+            padding: 6px 14px; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+            border-radius: 999px; text-decoration: none; color: var(--ink);
+            background: var(--soft);
+        }
+        .switcher a.active { background: var(--ink); color: var(--paper); }
+    </style>
+</head>
+<body>
+<header>
+    <div>
+        <h1>A/B FUNNEL</h1>
+        <div class="meta">Last {{ days }} days · {{ total_leads }} total leads</div>
+    </div>
+    <div class="switcher">
+        <a href="?days=1" class="{% if days == 1 %}active{% endif %}">24h</a>
+        <a href="?days=7" class="{% if days == 7 %}active{% endif %}">7d</a>
+        <a href="?days=14" class="{% if days == 14 %}active{% endif %}">14d</a>
+        <a href="?days=30" class="{% if days == 30 %}active{% endif %}">30d</a>
+    </div>
+</header>
+
+<main>
+    <section>
+        <h2>Variant comparison</h2>
+        {% if not summary %}
+            <div class="empty">
+                No events yet (or <code>landing_funnel_summary</code> RPC not deployed). Run <code>migrations.sql</code> in Supabase, then ship traffic to <code>/</code>.
+            </div>
+        {% else %}
+            {# pick winner = highest WA-click / sessions ratio #}
+            {% set winner = none %}
+            {% set winner_rate = -1 %}
+            {% for v in summary %}
+                {% set rate = (v.whatsapp_clicks / v.sessions) if v.sessions else 0 %}
+                {% if rate > winner_rate %}
+                    {% set winner = v.variant %}
+                    {% set winner_rate = rate %}
+                {% endif %}
+            {% endfor %}
+            <div class="grid">
+            {% for v in summary %}
+                <div class="card {% if v.variant == winner and v.sessions > 0 %}winner{% endif %}">
+                    {% if v.variant == winner and v.sessions > 0 %}
+                        <span class="winner-badge">★ Leading</span>
+                    {% endif %}
+                    <div class="label">Variant</div>
+                    <div class="vname">{{ v.variant }}</div>
+
+                    <div class="stat-row"><span class="key">Sessions</span><span class="val">{{ v.sessions }}</span></div>
+                    <div class="stat-row"><span class="key">Pageviews</span><span class="val">{{ v.pageviews }}</span></div>
+                    <div class="stat-row"><span class="key">Add to cart</span><span class="val">{{ v.add_to_carts }}</span></div>
+                    <div class="stat-row"><span class="key">WhatsApp clicks</span><span class="val">{{ v.whatsapp_clicks }}</span></div>
+                    <div class="stat-row"><span class="key">Email leads</span><span class="val">{{ v.leads }}</span></div>
+                    <div class="stat-row">
+                        <span class="key">WA conversion</span>
+                        <span class="val conv">
+                            {% if v.sessions %}{{ "%.1f"|format(v.whatsapp_clicks / v.sessions * 100) }}%{% else %}—{% endif %}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
+    <section>
+        <h2>Recent events</h2>
+        {% if not recent_events %}
+            <div class="empty">No events yet.</div>
+        {% else %}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>When</th>
+                    <th>Variant</th>
+                    <th>Event</th>
+                    <th>Modelo</th>
+                    <th>WA phone</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in recent_events %}
+                <tr>
+                    <td>{{ e.created_at[:19].replace('T', ' ') }}</td>
+                    <td>{% if e.variant %}<span class="pill {{ e.variant }}">{{ e.variant }}</span>{% endif %}</td>
+                    <td><span class="pill evt">{{ e.event_type }}</span></td>
+                    <td>{{ e.modelo or '' }}</td>
+                    <td>{{ e.wa_phone or '' }}</td>
+                    <td>{{ (e.utm_source or '') ~ (' / ' ~ e.utm_campaign if e.utm_campaign else '') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% endif %}
+    </section>
+</main>
+</body>
+</html>

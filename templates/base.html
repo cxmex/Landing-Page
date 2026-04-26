@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}TEREX — Designed for your phone{% endblock %}</title>
+    <meta name="description" content="{% block description %}Fundas para tu telefono. Stock real, envio a todo Mexico, paga por transferencia o efectivo. Pedido por WhatsApp en 1 minuto.{% endblock %}">
+
+    <!-- Open Graph / Twitter (FB & WhatsApp link previews) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ self.title() }}">
+    <meta property="og:description" content="{{ self.description() }}">
+    <meta property="og:url" content="{{ public_url }}{{ request.url.path }}">
+    {% block og_image %}
+    <meta property="og:image" content="{{ public_url }}/static/og.jpg">
+    {% endblock %}
+    <meta property="og:locale" content="es_MX">
+    <meta name="twitter:card" content="summary_large_image">
 
     <!-- Inter as a Helvetica-Neue substitute (free webfont) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -105,6 +117,27 @@
             padding: 0 24px;
         }
         @media (max-width: 600px) { .container-x { padding: 0 16px; } }
+
+        /* ── Sticky mobile cart bar (only when cart non-empty) ──────────── */
+        .mobile-cart-bar {
+            display: none;
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 80;
+            background: var(--ink); color: var(--paper);
+            padding: 14px 16px;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 -4px 16px rgba(0,0,0,.18);
+        }
+        .mobile-cart-bar.show { display: flex; }
+        .mobile-cart-bar .cnt {
+            font-size: .82rem; font-weight: 600;
+            letter-spacing: .08em; text-transform: uppercase;
+        }
+        .mobile-cart-bar .pill {
+            padding: 10px 18px; font-size: .72rem; background: var(--paper); color: var(--ink); border-color: var(--paper);
+        }
+        @media (max-width: 600px) {
+            .mobile-cart-bar.show ~ .wa-float { bottom: 84px; }
+        }
 
         /* ── Floating WhatsApp ──────────────────────────────────────────── */
         .wa-float {
@@ -238,6 +271,12 @@
 
 {% block content %}{% endblock %}
 
+<!-- Sticky mobile cart bar -->
+<div class="mobile-cart-bar" id="mobileCartBar">
+    <span class="cnt"><i class="bi bi-bag"></i> <span id="mobileCartCount">0</span> en tu seleccion</span>
+    <button class="pill" id="mobileCartGo">Ver carrito</button>
+</div>
+
 <!-- Floating WhatsApp -->
 <a class="wa-float"
    href="https://wa.me/{{ wa_number }}?text={{ wa_default_msg|urlencode }}"
@@ -312,7 +351,12 @@
         const el = document.getElementById('cartCount');
         if (total > 0) { el.textContent = total; el.style.display = 'flex'; }
         else { el.style.display = 'none'; }
+        // Mobile sticky bar
+        const bar = document.getElementById('mobileCartBar');
+        document.getElementById('mobileCartCount').textContent = total;
+        bar.classList.toggle('show', total > 0 && window.innerWidth <= 600);
     }
+    window.addEventListener('resize', renderCartCount);
     window.addToCart = function(item) {
         const cart = readCart();
         const key = item.barcode || `${item.estilo}|${item.color}|${item.modelo||''}`;
@@ -361,6 +405,7 @@
     document.getElementById('cartToggle').addEventListener('click', openCart);
     document.getElementById('cartClose').addEventListener('click', closeCart);
     document.getElementById('cartBackdrop').addEventListener('click', closeCart);
+    document.getElementById('mobileCartGo').addEventListener('click', openCart);
     document.getElementById('cartWaBtn').addEventListener('click', function() {
         const cart = readCart();
         if (!cart.length) { alert('Agrega productos primero'); return; }
