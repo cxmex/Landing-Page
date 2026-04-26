@@ -1,90 +1,149 @@
 {% extends "base.html" %}
 
-{% block title %}Mayoreo y Menudeo — Fundas Terex{% endblock %}
+{% block title %}TEREX — Mayoreo y menudeo{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-3" style="max-width:1100px;">
+<section class="hero-c">
+    <div class="container-x">
+        <p class="eyebrow">Para ti, para tu negocio</p>
+        <h1 class="display hero-c-title">CASES FOR <span style="color:var(--accent);">EVERYONE.</span></h1>
 
-    <!-- Customer-type selector -->
-    <div id="ctypeSwitcher" class="d-flex justify-content-center gap-2 mb-3">
-        <button class="btn btn-outline-primary ctype-btn active" data-ctype="retail">
-            <i class="bi bi-person"></i> Compra individual
-        </button>
-        <button class="btn btn-outline-primary ctype-btn" data-ctype="wholesale">
-            <i class="bi bi-people"></i> Mayoreo
-        </button>
-    </div>
-
-    <div class="ctype-banner ctype-retail mb-4">
-        <h5><i class="bi bi-bag-check"></i> Compra individual</h5>
-        <p class="mb-0 small">Stock real, envio a todo Mexico, paga por transferencia o deposito en OXOXO.</p>
-    </div>
-    <div class="ctype-banner ctype-wholesale mb-4 d-none">
-        <h5><i class="bi bi-truck"></i> Compra al mayoreo</h5>
-        <p class="mb-0 small">Precios especiales desde 12 piezas. Te conectamos con un asesor por WhatsApp.</p>
-        <button class="btn btn-success btn-sm mt-2" id="wholesaleWaBtn">
-            <i class="bi bi-whatsapp"></i> Hablar con asesor de mayoreo
-        </button>
-    </div>
-
-    <!-- Search -->
-    <div class="mb-4">
-        <div class="position-relative">
-            <input type="text" id="modeloInput" class="form-control form-control-lg"
-                   placeholder="Buscar modelo de telefono..." autocomplete="off">
-            <div id="suggestions" class="list-group position-absolute w-100 shadow"
-                 style="z-index:1000; max-height:300px; overflow-y:auto; display:none;"></div>
+        <!-- Customer-type toggle -->
+        <div class="ctype-toggle">
+            <button class="ctype-btn active" data-ctype="retail">
+                <i class="bi bi-person"></i> COMPRA INDIVIDUAL
+            </button>
+            <button class="ctype-btn" data-ctype="wholesale">
+                <i class="bi bi-people"></i> MAYOREO
+            </button>
         </div>
-        <span id="resultCount" class="text-muted small mt-2 d-block"></span>
-    </div>
 
-    <div id="loading" class="text-center py-5" style="display:none;">
-        <div class="spinner-border text-primary"></div>
-    </div>
-    <div id="emptyState" class="text-center py-5">
-        <i class="bi bi-search" style="font-size:4rem;color:#ddd;"></i>
-        <p class="text-muted mt-3 fs-5">Busca tu modelo</p>
-    </div>
+        <div class="ctype-banner ctype-retail">
+            <p class="eyebrow">Compra individual</p>
+            <p>Stock real, envio a todo Mexico, paga por transferencia o deposito en OXOXO.</p>
+        </div>
+        <div class="ctype-banner ctype-wholesale" style="display:none;">
+            <p class="eyebrow">Mayoreo</p>
+            <p>Precios especiales desde 12 piezas. Te conectamos con un asesor por WhatsApp.</p>
+            <button class="pill wa lg" id="wholesaleWaBtn">
+                <i class="bi bi-whatsapp"></i> Hablar con asesor de mayoreo
+            </button>
+        </div>
 
-    <div id="productGrid" class="d-flex flex-column gap-3"></div>
-</div>
+        <div class="search-wrap">
+            <div class="search-shell">
+                <i class="bi bi-search search-ico"></i>
+                <input type="text" id="modeloInput" class="search-input"
+                       placeholder="Busca tu modelo..." autocomplete="off">
+            </div>
+            <div id="suggestions" class="suggestions"></div>
+        </div>
+    </div>
+</section>
 
-<div class="modal fade" id="imgModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content bg-dark">
-            <div class="modal-body p-0 text-center">
-                <img id="modalImg" src="" style="max-width:100%;max-height:85vh;object-fit:contain;">
+<section class="results">
+    <div class="container-x">
+        <div id="resultBar" class="result-bar" style="display:none;">
+            <div>
+                <p class="eyebrow">Resultados</p>
+                <h2 class="display result-title" id="resultTitle"></h2>
             </div>
         </div>
+
+        <div id="loading" class="loading" style="display:none;"><div class="spinner"></div></div>
+        <div id="emptyState" class="empty"><p class="empty-text">Busca tu modelo para empezar</p></div>
+
+        <div id="productGrid" class="grid-c"></div>
     </div>
-</div>
+</section>
 
 <style>
-    .ctype-banner { padding:14px 16px; border-radius:10px; }
-    .ctype-retail { background:#e7f5ff; border:1px solid #74c0fc; }
-    .ctype-wholesale { background:#fff4e6; border:1px solid #ffd8a8; }
-    .ctype-btn.active { background:#0d6efd; color:#fff; }
+    .hero-c { padding: 56px 0 32px; text-align: center; }
+    .hero-c-title { margin-bottom: 24px; }
 
-    #suggestions .list-group-item { cursor:pointer; }
-    #suggestions .list-group-item:hover, #suggestions .list-group-item.active { background:#0d6efd; color:#fff; }
+    .ctype-toggle {
+        display: inline-flex; background: var(--soft); border-radius: var(--radius);
+        padding: 4px; margin-bottom: 24px; gap: 4px;
+    }
+    .ctype-btn {
+        background: transparent; border: none; padding: 10px 20px;
+        border-radius: var(--radius); font-size: .72rem;
+        font-weight: 600; letter-spacing: .1em; color: var(--muted);
+        transition: all .15s;
+    }
+    .ctype-btn.active { background: var(--ink); color: var(--paper); }
 
-    .product-card {
-        display:flex; gap:16px; padding:14px; border:1px solid #e9ecef;
-        border-radius:10px; background:#fff;
+    .ctype-banner {
+        max-width: 640px; margin: 0 auto 32px;
+        text-align: left; padding: 20px 24px;
+        border-radius: 16px; background: var(--soft);
     }
-    .product-img-wrap {
-        width:120px; min-width:120px; height:120px; border-radius:8px;
-        overflow:hidden; background:#f5f5f5; cursor:pointer; flex-shrink:0;
-    }
-    .product-img-wrap img { width:100%; height:100%; object-fit:cover; }
-    .product-info { flex:1; min-width:0; }
-    .actions { display:flex; gap:6px; margin-top:8px; }
-    .price-box { font-weight:700; color:#198754; }
+    .ctype-banner p { margin: 0; }
+    .ctype-banner p:not(.eyebrow) { color: var(--muted); margin-top: 4px; }
+    .ctype-banner .pill { margin-top: 14px; }
 
-    @media (max-width:576px) {
-        .product-card { flex-direction:column; }
-        .product-img-wrap { width:100%; height:180px; }
+    .search-wrap { position: relative; max-width: 640px; margin: 0 auto; }
+    .search-shell {
+        display: flex; align-items: center;
+        background: var(--soft); border-radius: var(--radius);
+        padding: 6px 6px 6px 22px;
     }
+    .search-input {
+        flex: 1; border: none; background: transparent; outline: none;
+        padding: 16px 12px; font-size: 1rem; font-family: inherit;
+    }
+    .search-ico { color: var(--muted); }
+    .suggestions {
+        position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+        background: var(--paper); border: 1px solid var(--line);
+        border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,.08);
+        max-height: 360px; overflow-y: auto; z-index: 10;
+        display: none; text-align: left;
+    }
+    .sug-item {
+        display: block; width: 100%; text-align: left;
+        background: none; border: none; padding: 14px 22px;
+        font-size: .92rem; border-bottom: 1px solid var(--line);
+    }
+    .sug-item:last-child { border-bottom: none; }
+    .sug-item:hover, .sug-item.active { background: var(--soft); }
+    .sug-item small { color: var(--muted); margin-left: 8px; text-transform: uppercase; font-size: .68rem; letter-spacing: .1em; }
+
+    .results { padding: 48px 0; }
+    .result-bar { margin-bottom: 28px; text-align: left; }
+    .result-title { font-size: clamp(1.4rem, 3vw, 2rem); }
+
+    .grid-c {
+        display: grid; gap: 20px;
+        grid-template-columns: repeat(3, 1fr);
+    }
+    @media (max-width: 800px) { .grid-c { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .grid-c { grid-template-columns: 1fr; } }
+
+    .pcard { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: flex; gap: 14px; }
+    .pcard .img {
+        width: 110px; min-width: 110px; aspect-ratio: 1/1;
+        background: var(--soft); border-radius: 10px;
+        overflow: hidden; cursor: pointer; position: relative;
+    }
+    .pcard .img img { width: 100%; height: 100%; object-fit: cover; }
+    .pcard .img .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 1.6rem; }
+    .pcard .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .pcard h6 { margin: 0 0 4px; font-size: .92rem; font-weight: 600; }
+    .pcard .meta { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .pcard .stock-line { font-size: .72rem; margin-top: 6px; text-transform: uppercase; letter-spacing: .08em; font-weight: 500; }
+    .pcard .stock-line.in { color: #1a8c4a; }
+    .pcard .stock-line.low { color: var(--accent); }
+    .pcard .stock-line.out { color: var(--muted); }
+    .pcard .actions { margin-top: auto; padding-top: 10px; display: flex; gap: 6px; }
+    .pcard .actions .pill { font-size: .65rem; padding: 8px 12px; }
+    .pcard .actions .pill.flex { flex: 1; }
+
+    .loading { text-align: center; padding: 80px 0; }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--line); border-top-color: var(--ink); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 80px 0; }
+    .empty-text { font-size: 1.05rem; color: var(--muted); }
 </style>
 {% endblock %}
 
@@ -96,7 +155,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const grid = document.getElementById('productGrid');
     const loading = document.getElementById('loading');
     const emptyState = document.getElementById('emptyState');
-    const resultCount = document.getElementById('resultCount');
+    const resultBar = document.getElementById('resultBar');
+    const resultTitle = document.getElementById('resultTitle');
 
     const allModelos = {{ modelos | tojson }};
     let currentProducts = [];
@@ -107,8 +167,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.ctype-btn').forEach(x => x.classList.remove('active'));
         this.classList.add('active');
         customerType = this.dataset.ctype;
-        document.querySelector('.ctype-retail').classList.toggle('d-none', customerType !== 'retail');
-        document.querySelector('.ctype-wholesale').classList.toggle('d-none', customerType !== 'wholesale');
+        document.querySelector('.ctype-retail').style.display = customerType === 'retail' ? 'block' : 'none';
+        document.querySelector('.ctype-wholesale').style.display = customerType === 'wholesale' ? 'block' : 'none';
         trackEvent('click', {action: 'ctype_switch', customer_type: customerType});
         if (currentProducts.length) render();
     }));
@@ -122,12 +182,10 @@ document.addEventListener('DOMContentLoaded', function() {
     input.addEventListener('input', function() {
         const q = this.value.trim().toLowerCase();
         if (q.length < 1) { sugBox.style.display = 'none'; return; }
-        const matches = allModelos.filter(m => m.modelo.toLowerCase().includes(q)).slice(0, 15);
+        const matches = allModelos.filter(m => m.modelo.toLowerCase().includes(q)).slice(0, 12);
         if (!matches.length) { sugBox.style.display = 'none'; return; }
         sugBox.innerHTML = matches.map(m =>
-            `<button class="list-group-item list-group-item-action" data-modelo="${m.modelo}">
-                <strong>${m.modelo}</strong> <small class="text-muted ms-2">${m.marca || ''}</small>
-            </button>`
+            `<button class="sug-item" data-modelo="${m.modelo}"><strong>${m.modelo}</strong><small>${m.marca || ''}</small></button>`
         ).join('');
         sugBox.style.display = 'block';
     });
@@ -146,50 +204,64 @@ document.addEventListener('DOMContentLoaded', function() {
         currentModelo = modelo;
         loading.style.display = 'block';
         emptyState.style.display = 'none';
+        resultBar.style.display = 'none';
         grid.innerHTML = '';
         try {
             const r = await fetch(`/api/products?modelo=${encodeURIComponent(modelo)}`);
             const d = await r.json();
             currentProducts = d.products || [];
             render();
-        } catch(e) { grid.innerHTML = '<div class="alert alert-danger">Error</div>'; }
+        } catch(e) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--accent);">Error</div>'; }
         loading.style.display = 'none';
     }
 
     function render() {
         if (!currentProducts.length) {
-            grid.innerHTML = `<div class="text-center py-4 text-muted">Sin stock. <a href="https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Buscan funda '+currentModelo)}" target="_blank">Preguntanos</a></div>`;
-            resultCount.textContent = '';
+            resultBar.style.display = 'block';
+            resultTitle.textContent = `Sin stock para ${currentModelo}`;
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;">
+                <a class="pill wa lg" target="_blank"
+                   href="https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Buscan funda '+currentModelo)}"
+                   onclick="trackEvent('whatsapp_click',{source:'no_stock'})"
+                ><i class="bi bi-whatsapp"></i> Preguntanos</a>
+            </div>`;
             return;
         }
         const isWholesale = customerType === 'wholesale';
-        resultCount.textContent = `${currentProducts.length} estilos para ${currentModelo}` + (isWholesale ? ' · precios de mayoreo por WhatsApp' : '');
+        resultBar.style.display = 'block';
+        resultTitle.textContent = `For ${currentModelo}` + (isWholesale ? ' · MAYOREO' : '');
 
-        grid.innerHTML = currentProducts.map((p, idx) => `
-            <div class="product-card">
-                <div class="product-img-wrap" ${p.image_url ? `onclick="showImage('${p.image_url}')"` : ''}>
-                    ${p.image_url ? `<img src="${p.image_url}" loading="lazy">` : '<div class="text-center text-muted small p-3"><i class="bi bi-image" style="font-size:1.5rem;display:block;"></i>Sin foto</div>'}
+        grid.innerHTML = currentProducts.map((p, idx) => {
+            const stockLine = p.stock === 0
+                ? '<div class="stock-line out">Agotado</div>'
+                : p.stock < 5
+                    ? `<div class="stock-line low">Quedan ${p.stock}</div>`
+                    : `<div class="stock-line in">En stock</div>`;
+            return `
+            <div class="pcard">
+                <div class="img" ${p.image_url ? `onclick="showImage('${p.image_url}')"` : ''}>
+                    ${p.image_url ? `<img src="${p.image_url}" loading="lazy">` : '<div class="ph"><i class="bi bi-phone"></i></div>'}
                 </div>
-                <div class="product-info">
+                <div class="body">
                     <h6>${p.estilo}</h6>
-                    <div class="text-muted small">${p.color}</div>
-                    <div class="small mt-1">${p.stock > 0 ? `<span class="badge bg-success">${p.stock} disponibles</span>` : '<span class="badge bg-danger">Agotado</span>'}</div>
+                    <div class="meta">${p.color}</div>
+                    ${stockLine}
                     <div class="actions">
                         ${isWholesale
-                          ? `<button class="btn btn-success btn-sm flex-fill" data-idx="${idx}" data-action="wa-bulk">
+                          ? `<button class="pill wa flex" data-idx="${idx}" data-action="wa-bulk">
                                 <i class="bi bi-whatsapp"></i> Cotizar mayoreo
                              </button>`
-                          : `<button class="btn btn-primary btn-sm flex-fill" data-idx="${idx}" data-action="add" ${p.stock === 0 ? 'disabled' : ''}>
-                                <i class="bi bi-cart-plus"></i> Agregar
+                          : `<button class="pill flex" data-idx="${idx}" data-action="add" ${p.stock === 0 ? 'disabled' : ''}>
+                                <i class="bi bi-bag-plus"></i> Add to bag
                              </button>
-                             <button class="btn btn-outline-success btn-sm" data-idx="${idx}" data-action="wa">
+                             <button class="pill wa" data-idx="${idx}" data-action="wa">
                                 <i class="bi bi-whatsapp"></i>
                              </button>`
                         }
                     </div>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
 
         grid.querySelectorAll('[data-action="add"]').forEach(b => b.addEventListener('click', function() {
             const p = currentProducts[+this.dataset.idx];
@@ -207,11 +279,6 @@ document.addEventListener('DOMContentLoaded', function() {
             window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
         }));
     }
-
-    window.showImage = function(url) {
-        document.getElementById('modalImg').src = url;
-        new bootstrap.Modal(document.getElementById('imgModal')).show();
-    };
 
     const pre = new URLSearchParams(window.location.search).get('modelo');
     if (pre) { input.value = pre; loadProducts(pre); }

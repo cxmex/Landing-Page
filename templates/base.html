@@ -3,175 +3,312 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Fundas para tu Telefono{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>{% block title %}TEREX — Designed for your phone{% endblock %}</title>
+
+    <!-- Inter as a Helvetica-Neue substitute (free webfont) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
+        /* ── Tokens ─────────────────────────────────────────────────────── */
         :root {
-            --brand: #0d6efd;
+            --ink: #000;
+            --paper: #fff;
+            --soft: #f5f5f5;
+            --line: #e5e5e5;
+            --muted: #888;
+            --accent: #ff3b30;
             --whatsapp: #25d366;
+            --radius: 999px;
+            --container: 1280px;
+            --font: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
-        body { background: #f7f8fa; }
-        .topbar {
-            background: #fff; border-bottom: 1px solid #e9ecef;
-            padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
-            position: sticky; top: 0; z-index: 50;
-        }
-        .topbar .brand { font-weight: 700; font-size: 1.15rem; color: #111; text-decoration: none; }
-        .topbar .actions { display: flex; gap: 8px; }
-        .topbar .btn { font-size: .85rem; }
-        .wa-btn { background: var(--whatsapp); border-color: var(--whatsapp); color: #fff; }
-        .wa-btn:hover { background: #1ebe5b; border-color: #1ebe5b; color: #fff; }
 
-        /* Floating WhatsApp bubble */
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            color: var(--ink);
+            background: var(--paper);
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.5;
+        }
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; cursor: pointer; }
+        img { max-width: 100%; display: block; }
+
+        /* ── Pill button ────────────────────────────────────────────────── */
+        .pill {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            background: var(--ink); color: var(--paper);
+            border: 1px solid var(--ink);
+            padding: 12px 22px; border-radius: var(--radius);
+            font-size: .78rem; font-weight: 600; letter-spacing: .08em;
+            text-transform: uppercase; transition: all .15s ease;
+            white-space: nowrap;
+        }
+        .pill:hover { background: #222; color: var(--paper); }
+        .pill.outline { background: transparent; color: var(--ink); }
+        .pill.outline:hover { background: var(--ink); color: var(--paper); }
+        .pill.wa { background: var(--whatsapp); border-color: var(--whatsapp); }
+        .pill.wa:hover { background: #1ebe5b; border-color: #1ebe5b; }
+        .pill.sm { padding: 8px 16px; font-size: .7rem; }
+        .pill.lg { padding: 16px 32px; font-size: .85rem; }
+        .pill[disabled] { opacity: .35; pointer-events: none; }
+
+        /* ── Top nav ────────────────────────────────────────────────────── */
+        .nav {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--paper);
+            border-bottom: 1px solid var(--line);
+            padding: 14px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .nav .logo {
+            font-weight: 800; letter-spacing: .14em; font-size: 1.05rem;
+            text-transform: uppercase;
+        }
+        .nav .actions { display: flex; align-items: center; gap: 8px; }
+        .nav .icon-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            border: none; background: transparent;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; position: relative; color: var(--ink);
+        }
+        .nav .icon-btn:hover { background: var(--soft); }
+        .nav .cart-count {
+            position: absolute; top: 4px; right: 4px;
+            background: var(--accent); color: var(--paper);
+            border-radius: 50%; width: 18px; height: 18px;
+            font-size: .65rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .nav .wa-pill { display: inline-flex; }
+        @media (max-width: 600px) {
+            .nav { padding: 12px 16px; }
+            .nav .wa-pill .label { display: none; }
+        }
+
+        /* ── Trust strip ────────────────────────────────────────────────── */
+        .trust-strip {
+            background: var(--ink); color: var(--paper);
+            text-align: center; padding: 8px 16px;
+            font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        /* ── Page container ─────────────────────────────────────────────── */
+        .container-x {
+            max-width: var(--container);
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        @media (max-width: 600px) { .container-x { padding: 0 16px; } }
+
+        /* ── Floating WhatsApp ──────────────────────────────────────────── */
         .wa-float {
-            position: fixed; bottom: 20px; right: 20px; z-index: 1050;
-            width: 58px; height: 58px; border-radius: 50%;
+            position: fixed; bottom: 24px; right: 24px; z-index: 90;
+            width: 60px; height: 60px; border-radius: 50%;
             background: var(--whatsapp); color: #fff;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 16px rgba(0,0,0,.18);
-            text-decoration: none; font-size: 1.8rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,.18);
+            font-size: 1.9rem; transition: transform .12s;
         }
-        .wa-float:hover { color: #fff; transform: scale(1.05); }
+        .wa-float:hover { color: #fff; transform: scale(1.06); }
 
-        /* Cart drawer */
-        .cart-toggle {
-            position: relative;
-        }
-        .cart-toggle .cart-count {
-            position: absolute; top: -6px; right: -6px;
-            background: #dc3545; color: #fff; border-radius: 50%;
-            width: 20px; height: 20px; font-size: .7rem;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .cart-drawer {
-            position: fixed; top: 0; right: 0; height: 100vh; width: 360px;
-            max-width: 90vw; background: #fff; box-shadow: -4px 0 16px rgba(0,0,0,.1);
-            transform: translateX(100%); transition: transform .25s ease;
-            z-index: 1100; display: flex; flex-direction: column;
-        }
-        .cart-drawer.open { transform: translateX(0); }
+        /* ── Cart drawer ────────────────────────────────────────────────── */
         .cart-backdrop {
-            position: fixed; inset: 0; background: rgba(0,0,0,.35);
-            opacity: 0; pointer-events: none; transition: opacity .2s;
-            z-index: 1099;
+            position: fixed; inset: 0; background: rgba(0,0,0,.45);
+            opacity: 0; pointer-events: none; transition: opacity .25s;
+            z-index: 199;
         }
         .cart-backdrop.open { opacity: 1; pointer-events: auto; }
-        .cart-drawer header { padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .cart-drawer .items { flex: 1; overflow-y: auto; padding: 12px; }
-        .cart-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f1f1; }
-        .cart-item img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; background: #f5f5f5; }
-        .cart-item .info { flex: 1; min-width: 0; }
-        .cart-item .info h6 { margin: 0; font-size: .9rem; }
-        .cart-item .info .meta { font-size: .75rem; color: #777; }
-        .cart-drawer footer { padding: 16px; border-top: 1px solid #eee; }
-
-        .help-banner {
-            background: #fffbe6; border: 1px solid #ffe58f;
-            border-radius: 8px; padding: 10px 14px; font-size: .9rem;
-            display: flex; align-items: center; gap: 10px; margin: 12px;
+        .cart-drawer {
+            position: fixed; top: 0; right: 0; height: 100vh; width: 420px;
+            max-width: 100vw; background: var(--paper);
+            transform: translateX(100%); transition: transform .3s ease;
+            z-index: 200; display: flex; flex-direction: column;
         }
+        .cart-drawer.open { transform: translateX(0); }
+        .cart-drawer header {
+            padding: 24px; border-bottom: 1px solid var(--line);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .cart-drawer header h5 {
+            margin: 0; font-size: .95rem; font-weight: 700;
+            letter-spacing: .14em; text-transform: uppercase;
+        }
+        .cart-drawer .items { flex: 1; overflow-y: auto; padding: 16px 24px; }
+        .cart-item {
+            display: flex; gap: 14px; padding: 16px 0;
+            border-bottom: 1px solid var(--line);
+        }
+        .cart-item img {
+            width: 72px; height: 72px; object-fit: cover;
+            border-radius: 8px; background: var(--soft);
+        }
+        .cart-item .info { flex: 1; min-width: 0; }
+        .cart-item .info h6 { margin: 0 0 4px; font-size: .9rem; font-weight: 600; }
+        .cart-item .info .meta { font-size: .72rem; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+        .cart-item .x {
+            background: none; border: none; color: var(--muted);
+            font-size: 1rem; padding: 4px;
+        }
+        .cart-drawer footer { padding: 24px; border-top: 1px solid var(--line); }
+        .cart-empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+
+        /* ── Modal (bounce / image) ─────────────────────────────────────── */
+        .modal-x-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,.6);
+            display: none; z-index: 300;
+            align-items: center; justify-content: center;
+        }
+        .modal-x-backdrop.open { display: flex; }
+        .modal-x {
+            background: var(--paper); border-radius: 16px;
+            padding: 32px; max-width: 420px; width: calc(100% - 32px);
+            position: relative;
+        }
+        .modal-x .close-x {
+            position: absolute; top: 12px; right: 12px;
+            background: none; border: none; font-size: 1.4rem; color: var(--muted);
+        }
+        .modal-x h3 {
+            font-size: 1.2rem; font-weight: 700; margin: 0 0 8px;
+            letter-spacing: -.01em;
+        }
+        .modal-x p { color: var(--muted); font-size: .9rem; margin: 0 0 16px; }
+        .modal-x input[type="email"] {
+            width: 100%; border: 1px solid var(--line); border-radius: 8px;
+            padding: 14px 16px; font-size: .95rem; font-family: inherit;
+            margin-bottom: 12px;
+        }
+        .modal-x input[type="email"]:focus { outline: none; border-color: var(--ink); }
+
+        /* ── Image lightbox ─────────────────────────────────────────────── */
+        .lightbox-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,.92);
+            display: none; z-index: 300;
+            align-items: center; justify-content: center;
+        }
+        .lightbox-backdrop.open { display: flex; }
+        .lightbox-backdrop img { max-width: 92vw; max-height: 92vh; object-fit: contain; }
+        .lightbox-backdrop .close-x {
+            position: absolute; top: 20px; right: 24px;
+            background: none; border: none; color: #fff; font-size: 2rem;
+        }
+
+        /* ── Generic typography helpers ─────────────────────────────────── */
+        .eyebrow {
+            font-size: .72rem; letter-spacing: .16em;
+            text-transform: uppercase; color: var(--muted); font-weight: 600;
+        }
+        h1.display, h2.display {
+            font-weight: 800; letter-spacing: -.025em; line-height: 1.05;
+            margin: 0;
+        }
+        h1.display { font-size: clamp(2.4rem, 6vw, 4.8rem); }
+        h2.display { font-size: clamp(1.6rem, 4vw, 2.6rem); }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-<div class="topbar">
-    <a href="/" class="brand"><i class="bi bi-phone"></i> Fundas Terex</a>
+<div class="trust-strip">Envio a todo Mexico · Pago por transferencia, OXOXO o efectivo · Tienda fisica</div>
+
+<header class="nav">
+    <a href="/" class="logo">TEREX<span style="color:var(--accent);">.</span></a>
     <div class="actions">
-        <button class="btn btn-sm btn-outline-secondary cart-toggle" id="cartToggle">
-            <i class="bi bi-cart"></i>
-            <span class="cart-count" id="cartCount" style="display:none;">0</span>
-        </button>
-        <a class="btn btn-sm btn-outline-secondary d-none d-sm-inline-flex" href="tel:{{ business_phone }}"
-           onclick="trackEvent('call_click')">
+        <a class="icon-btn d-none-sm" href="tel:{{ business_phone }}"
+           onclick="trackEvent('call_click')" aria-label="Llamar">
             <i class="bi bi-telephone"></i>
         </a>
-        <a class="btn btn-sm wa-btn" id="waCta"
+        <button class="icon-btn" id="cartToggle" aria-label="Carrito">
+            <i class="bi bi-bag"></i>
+            <span class="cart-count" id="cartCount" style="display:none;">0</span>
+        </button>
+        <a class="pill wa wa-pill"
            href="https://wa.me/{{ wa_number }}?text={{ wa_default_msg|urlencode }}"
            target="_blank" onclick="trackEvent('whatsapp_click', {source:'topbar'})">
-            <i class="bi bi-whatsapp"></i> WhatsApp
+            <i class="bi bi-whatsapp"></i><span class="label">WhatsApp</span>
         </a>
     </div>
-</div>
-
-<div class="help-banner">
-    <i class="bi bi-shop"></i>
-    <div>Somos una tienda fisica en Mexico. Envios a todo el pais. Paga por transferencia, deposito en OXOXO o efectivo.</div>
-</div>
+</header>
 
 {% block content %}{% endblock %}
 
 <!-- Floating WhatsApp -->
-<a class="wa-float" href="https://wa.me/{{ wa_number }}?text={{ wa_default_msg|urlencode }}"
+<a class="wa-float"
+   href="https://wa.me/{{ wa_number }}?text={{ wa_default_msg|urlencode }}"
    target="_blank" onclick="trackEvent('whatsapp_click', {source:'float'})">
     <i class="bi bi-whatsapp"></i>
 </a>
 
 <!-- Cart drawer -->
 <div class="cart-backdrop" id="cartBackdrop"></div>
-<aside class="cart-drawer" id="cartDrawer" aria-hidden="true">
+<aside class="cart-drawer" id="cartDrawer">
     <header>
-        <strong><i class="bi bi-cart"></i> Tu seleccion</strong>
-        <button class="btn btn-sm btn-light" id="cartClose"><i class="bi bi-x-lg"></i></button>
+        <h5>Tu seleccion</h5>
+        <button class="icon-btn" id="cartClose"><i class="bi bi-x-lg"></i></button>
     </header>
     <div class="items" id="cartItems"></div>
     <footer>
-        <button class="btn wa-btn w-100" id="cartWaBtn">
+        <button class="pill wa lg w-100" id="cartWaBtn" style="width:100%;">
             <i class="bi bi-whatsapp"></i> Pedir por WhatsApp
         </button>
-        <small class="text-muted d-block text-center mt-2">Te conectamos con un humano para confirmar el envio</small>
+        <p style="text-align:center;font-size:.75rem;color:var(--muted);margin:12px 0 0;">
+            Te conectamos con un humano para confirmar el envio
+        </p>
     </footer>
 </aside>
 
-<!-- Bounce / email capture modal -->
-<div class="modal fade" id="bounceModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body p-4">
-                <h5 class="mb-2"><i class="bi bi-envelope"></i> No te vayas todavia</h5>
-                <p class="text-muted small">Dejanos tu correo y te avisamos cuando lleguen nuevos modelos o haya promociones.</p>
-                <form id="leadForm" class="d-flex flex-column gap-2">
-                    <input type="email" name="email" class="form-control" placeholder="tu@correo.com" required>
-                    <input type="hidden" name="source" value="bounce_modal">
-                    <button type="submit" class="btn btn-primary w-100">Quiero recibir avisos</button>
-                </form>
-                <p id="leadOk" class="text-success small mt-2 d-none">Listo, te avisamos pronto.</p>
-            </div>
-        </div>
+<!-- Bounce modal -->
+<div class="modal-x-backdrop" id="bounceBackdrop">
+    <div class="modal-x">
+        <button class="close-x" data-close-bounce>&times;</button>
+        <h3>No te vayas todavia</h3>
+        <p>Dejanos tu correo y te avisamos de nuevos modelos y promociones.</p>
+        <form id="leadForm">
+            <input type="email" name="email" placeholder="tu@correo.com" required>
+            <input type="hidden" name="source" value="bounce_modal">
+            <button type="submit" class="pill lg" style="width:100%;">Quiero recibir avisos</button>
+        </form>
+        <p id="leadOk" style="color:#1a8c4a;font-size:.85rem;margin-top:10px;display:none;">
+            Listo, te avisamos pronto.
+        </p>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Image lightbox -->
+<div class="lightbox-backdrop" id="lightbox">
+    <button class="close-x" id="lightboxClose">&times;</button>
+    <img id="lightboxImg" src="">
+</div>
+
 <script>
-    // ── Tracking ───────────────────────────────────────────────────────────
+    // ── Globals ───────────────────────────────────────────────────────────
     const SESSION_ID = "{{ session_id }}";
     const VARIANT = "{{ variant|default('') }}";
     const WA_NUMBER = "{{ wa_number }}";
     const WA_DEFAULT_MSG = {{ wa_default_msg|tojson }};
 
+    // ── Tracking ──────────────────────────────────────────────────────────
     function trackEvent(event_type, data) {
         const payload = Object.assign({event_type}, data || {});
         try {
-            navigator.sendBeacon
-                ? navigator.sendBeacon('/api/track', new Blob([JSON.stringify(payload)], {type: 'application/json'}))
-                : fetch('/api/track', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload), keepalive: true});
+            const blob = new Blob([JSON.stringify(payload)], {type: 'application/json'});
+            if (navigator.sendBeacon) navigator.sendBeacon('/api/track', blob);
+            else fetch('/api/track', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload), keepalive: true});
         } catch (e) { console.warn('track failed', e); }
     }
 
-    // ── Cart (localStorage-backed) ─────────────────────────────────────────
+    // ── Cart ──────────────────────────────────────────────────────────────
     const CART_KEY = 'lp_cart_v1';
-    function readCart() {
-        try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); }
-        catch { return []; }
-    }
-    function writeCart(items) {
-        localStorage.setItem(CART_KEY, JSON.stringify(items));
-        renderCartCount();
-    }
+    function readCart() { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; } }
+    function writeCart(items) { localStorage.setItem(CART_KEY, JSON.stringify(items)); renderCartCount(); }
     function renderCartCount() {
-        const items = readCart();
-        const total = items.reduce((s, i) => s + (i.qty || 1), 0);
+        const total = readCart().reduce((s, i) => s + (i.qty || 1), 0);
         const el = document.getElementById('cartCount');
         if (total > 0) { el.textContent = total; el.style.display = 'flex'; }
         else { el.style.display = 'none'; }
@@ -193,27 +330,25 @@
         trackEvent('remove_from_cart', removed);
         renderCartItems();
     };
-
     function renderCartItems() {
         const cart = readCart();
         const wrap = document.getElementById('cartItems');
         if (!cart.length) {
-            wrap.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-cart-x"></i><br>Tu seleccion esta vacia</div>';
+            wrap.innerHTML = '<div class="cart-empty"><i class="bi bi-bag" style="font-size:2.4rem;"></i><p style="margin-top:12px;">Tu seleccion esta vacia</p></div>';
             return;
         }
         wrap.innerHTML = cart.map((c, i) => `
             <div class="cart-item">
-                ${c.image_url ? `<img src="${c.image_url}">` : '<div class="cart-item-noimg" style="width:56px;height:56px;background:#f1f1f1;border-radius:6px;"></div>'}
+                ${c.image_url ? `<img src="${c.image_url}">` : '<div style="width:72px;height:72px;background:var(--soft);border-radius:8px;"></div>'}
                 <div class="info">
                     <h6>${c.estilo || 'Estilo'}</h6>
                     <div class="meta">${c.modelo || ''} · ${c.color || ''}</div>
-                    <div class="meta">Cantidad: ${c.qty}</div>
+                    <div class="meta">Cant: ${c.qty}</div>
                 </div>
-                <button class="btn btn-sm btn-light" onclick="removeFromCart(${i})"><i class="bi bi-trash"></i></button>
+                <button class="x" onclick="removeFromCart(${i})"><i class="bi bi-x-lg"></i></button>
             </div>
         `).join('');
     }
-
     function openCart() {
         document.getElementById('cartDrawer').classList.add('open');
         document.getElementById('cartBackdrop').classList.add('open');
@@ -226,7 +361,6 @@
     document.getElementById('cartToggle').addEventListener('click', openCart);
     document.getElementById('cartClose').addEventListener('click', closeCart);
     document.getElementById('cartBackdrop').addEventListener('click', closeCart);
-
     document.getElementById('cartWaBtn').addEventListener('click', function() {
         const cart = readCart();
         if (!cart.length) { alert('Agrega productos primero'); return; }
@@ -236,34 +370,47 @@
         window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
     });
 
-    // ── Lead form ──────────────────────────────────────────────────────────
+    // ── Lead form ─────────────────────────────────────────────────────────
     document.getElementById('leadForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const fd = new FormData(this);
         const r = await fetch('/api/lead', {method:'POST', body: fd});
         if (r.ok) {
             this.reset();
-            document.getElementById('leadOk').classList.remove('d-none');
-            setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('bounceModal'))?.hide(), 1500);
+            document.getElementById('leadOk').style.display = 'block';
+            setTimeout(closeBounce, 1500);
         }
     });
 
-    // ── Bounce intent: show modal when mouse leaves the viewport top ──────
+    // ── Bounce modal ──────────────────────────────────────────────────────
     let bounceShown = false;
+    function openBounce() {
+        bounceShown = true;
+        trackEvent('bounce');
+        document.getElementById('bounceBackdrop').classList.add('open');
+    }
+    function closeBounce() { document.getElementById('bounceBackdrop').classList.remove('open'); }
+    document.querySelectorAll('[data-close-bounce]').forEach(b => b.addEventListener('click', closeBounce));
+    document.getElementById('bounceBackdrop').addEventListener('click', e => {
+        if (e.target.id === 'bounceBackdrop') closeBounce();
+    });
     document.addEventListener('mouseleave', function(e) {
-        if (bounceShown) return;
-        if (e.clientY <= 0) {
-            bounceShown = true;
-            trackEvent('bounce');
-            new bootstrap.Modal(document.getElementById('bounceModal')).show();
-        }
+        if (!bounceShown && e.clientY <= 0) openBounce();
     });
 
-    // ── Init ───────────────────────────────────────────────────────────────
-    renderCartCount();
+    // ── Lightbox ──────────────────────────────────────────────────────────
+    window.showImage = function(url) {
+        document.getElementById('lightboxImg').src = url;
+        document.getElementById('lightbox').classList.add('open');
+    };
+    document.getElementById('lightboxClose').addEventListener('click', () =>
+        document.getElementById('lightbox').classList.remove('open')
+    );
+    document.getElementById('lightbox').addEventListener('click', e => {
+        if (e.target.id === 'lightbox') document.getElementById('lightbox').classList.remove('open');
+    });
 
-    // Capture wa= and utm_* on load and persist to event metadata via cookie-less query passthrough
-    // (the server already reads request.query_params on /api/track via cookie+session)
+    renderCartCount();
 </script>
 {% block extra_scripts %}{% endblock %}
 </body>

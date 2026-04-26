@@ -1,81 +1,168 @@
 {% extends "base.html" %}
 
-{% block title %}Catalogo Visual — Fundas Terex{% endblock %}
+{% block title %}TEREX — Catalogo visual{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-3" style="max-width:1200px;">
+<section class="hero-b">
+    <div class="container-x">
+        <p class="eyebrow">El catalogo</p>
+        <h1 class="display hero-b-title">SHOP BY <span style="color:var(--accent);">PHONE.</span></h1>
+        <p class="hero-b-sub">Elige tu marca para empezar, o busca tu modelo exacto.</p>
 
-    <!-- Hero -->
-    <div class="hero text-center mb-4 p-4 rounded">
-        <h1 class="mb-2">Tu funda perfecta esta aqui</h1>
-        <p class="lead text-muted mb-3">Cientos de modelos. Stock real. Pedido por WhatsApp en 1 minuto.</p>
-        <div class="d-flex justify-content-center">
-            <div class="position-relative" style="max-width:480px;width:100%;">
-                <input type="text" id="modeloInput" class="form-control form-control-lg"
-                       placeholder="Escribe tu modelo..." autocomplete="off">
-                <div id="suggestions" class="list-group position-absolute w-100 shadow"
-                     style="z-index:1000; max-height:300px; overflow-y:auto; display:none;"></div>
+        <div class="search-wrap">
+            <div class="search-shell">
+                <i class="bi bi-search search-ico"></i>
+                <input type="text" id="modeloInput" class="search-input"
+                       placeholder="iPhone 15, Samsung S24, Moto G84..." autocomplete="off">
+            </div>
+            <div id="suggestions" class="suggestions"></div>
+        </div>
+
+        <div class="brand-grid">
+            <button class="brand-tile" data-brand="IPHONE">
+                <i class="bi bi-apple"></i>
+                <span>iPhone</span>
+            </button>
+            <button class="brand-tile" data-brand="SAMSUNG">
+                <i class="bi bi-phone"></i>
+                <span>Samsung</span>
+            </button>
+            <button class="brand-tile" data-brand="MOTOROLA">
+                <i class="bi bi-phone"></i>
+                <span>Motorola</span>
+            </button>
+            <button class="brand-tile" data-brand="XIAOMI">
+                <i class="bi bi-phone"></i>
+                <span>Xiaomi</span>
+            </button>
+            <button class="brand-tile" data-brand="HUAWEI">
+                <i class="bi bi-phone"></i>
+                <span>Huawei</span>
+            </button>
+            <button class="brand-tile" data-brand="OPPO">
+                <i class="bi bi-phone"></i>
+                <span>Oppo</span>
+            </button>
+        </div>
+    </div>
+</section>
+
+<section class="results">
+    <div class="container-x">
+        <div id="resultBar" class="result-bar" style="display:none;">
+            <div>
+                <p class="eyebrow">Resultados</p>
+                <h2 class="display result-title" id="resultTitle"></h2>
             </div>
         </div>
-        <div class="brand-pills mt-3 d-flex flex-wrap gap-2 justify-content-center">
-            <button class="btn btn-sm btn-outline-dark brand-pill" data-brand="IPHONE">iPhone</button>
-            <button class="btn btn-sm btn-outline-dark brand-pill" data-brand="SAMSUNG">Samsung</button>
-            <button class="btn btn-sm btn-outline-dark brand-pill" data-brand="MOTOROLA">Motorola</button>
-            <button class="btn btn-sm btn-outline-dark brand-pill" data-brand="XIAOMI">Xiaomi</button>
-            <button class="btn btn-sm btn-outline-dark brand-pill" data-brand="HUAWEI">Huawei</button>
+
+        <div id="loading" class="loading" style="display:none;">
+            <div class="spinner"></div>
         </div>
-    </div>
 
-    <div id="loading" class="text-center py-5" style="display:none;">
-        <div class="spinner-border text-primary"></div>
-    </div>
-
-    <div id="emptyState" class="text-center py-5">
-        <i class="bi bi-grid-3x3-gap" style="font-size:4rem;color:#ddd;"></i>
-        <p class="text-muted mt-3 fs-5">Elige una marca o escribe tu modelo arriba</p>
-    </div>
-
-    <!-- Visual grid -->
-    <div id="resultCount" class="text-muted small mb-2"></div>
-    <div id="productGrid" class="product-grid"></div>
-</div>
-
-<div class="modal fade" id="imgModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content bg-dark">
-            <div class="modal-body p-0 text-center">
-                <img id="modalImg" src="" style="max-width:100%;max-height:85vh;object-fit:contain;">
-            </div>
+        <div id="emptyState" class="empty">
+            <p class="empty-text">Selecciona una marca o busca tu modelo</p>
         </div>
+
+        <div id="productGrid" class="grid-b"></div>
     </div>
-</div>
+</section>
 
 <style>
-    .hero { background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%); }
-    #suggestions .list-group-item { cursor:pointer; }
-    #suggestions .list-group-item:hover, #suggestions .list-group-item.active { background:#0d6efd; color:#fff; }
+    .hero-b { padding: 56px 0 32px; text-align: center; }
+    .hero-b-title { margin-bottom: 14px; }
+    .hero-b-sub { color: var(--muted); margin-bottom: 32px; }
 
-    .product-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 14px;
+    .search-wrap { position: relative; max-width: 640px; margin: 0 auto; }
+    .search-shell {
+        display: flex; align-items: center;
+        background: var(--soft); border-radius: var(--radius);
+        padding: 6px 6px 6px 22px;
     }
-    .pcard {
-        background: #fff; border: 1px solid #eee; border-radius: 10px;
-        overflow: hidden; transition: transform .12s, box-shadow .12s;
-        display: flex; flex-direction: column;
+    .search-ico { color: var(--muted); }
+    .search-input {
+        flex: 1; border: none; background: transparent; outline: none;
+        padding: 16px 12px; font-size: 1rem; font-family: inherit;
     }
-    .pcard:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.08); }
+    .suggestions {
+        position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+        background: var(--paper); border: 1px solid var(--line);
+        border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,.08);
+        max-height: 360px; overflow-y: auto; z-index: 10;
+        display: none; text-align: left;
+    }
+    .sug-item {
+        display: block; width: 100%; text-align: left;
+        background: none; border: none; padding: 14px 22px;
+        font-size: .92rem; border-bottom: 1px solid var(--line);
+    }
+    .sug-item:last-child { border-bottom: none; }
+    .sug-item:hover, .sug-item.active { background: var(--soft); }
+    .sug-item small { color: var(--muted); margin-left: 8px; text-transform: uppercase; font-size: .68rem; letter-spacing: .1em; }
+
+    .brand-grid {
+        margin-top: 36px;
+        display: grid; gap: 12px;
+        grid-template-columns: repeat(6, 1fr);
+    }
+    @media (max-width: 800px) { .brand-grid { grid-template-columns: repeat(3, 1fr); } }
+    .brand-tile {
+        background: var(--soft); border: none; border-radius: 16px;
+        padding: 20px 12px; display: flex; flex-direction: column;
+        align-items: center; gap: 8px; transition: all .15s;
+    }
+    .brand-tile:hover { background: var(--ink); color: var(--paper); }
+    .brand-tile i { font-size: 1.6rem; }
+    .brand-tile span {
+        font-size: .78rem; font-weight: 600; letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .results { padding: 48px 0; }
+    .result-bar { margin-bottom: 28px; }
+    .result-title { font-size: clamp(1.4rem, 3vw, 2rem); }
+
+    .grid-b {
+        display: grid; gap: 18px;
+        grid-template-columns: repeat(5, 1fr);
+    }
+    @media (max-width: 1100px) { .grid-b { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 800px)  { .grid-b { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+    @media (max-width: 480px)  { .grid-b { grid-template-columns: repeat(2, 1fr); } }
+
+    .pcard { background: var(--paper); }
     .pcard .img {
-        aspect-ratio: 1/1; background: #f5f5f5; cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
+        aspect-ratio: 1/1; background: var(--soft);
+        border-radius: 14px; overflow: hidden; cursor: pointer;
+        position: relative;
     }
-    .pcard .img img { width: 100%; height: 100%; object-fit: cover; }
-    .pcard .body { padding: 10px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-    .pcard h6 { font-size: .9rem; margin: 0; }
-    .pcard .meta { font-size: .75rem; color: #777; }
-    .pcard .actions { display: flex; gap: 4px; margin-top: auto; }
-    .pcard .btn { font-size: .75rem; flex: 1; padding: 4px; }
+    .pcard .img img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s; }
+    .pcard:hover .img img { transform: scale(1.04); }
+    .pcard .img .ph {
+        position: absolute; inset: 0; display: flex;
+        align-items: center; justify-content: center; color: #ccc; font-size: 2rem;
+    }
+    .pcard .info { padding: 10px 4px 0; }
+    .pcard h6 {
+        margin: 0 0 2px; font-size: .82rem; font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pcard .meta {
+        font-size: .7rem; color: var(--muted);
+        text-transform: uppercase; letter-spacing: .06em;
+    }
+    .pcard .actions { margin-top: 8px; display: flex; gap: 4px; }
+    .pcard .actions .pill { flex: 1; padding: 8px 10px; font-size: .65rem; }
+
+    .loading { text-align: center; padding: 80px 0; }
+    .spinner {
+        display: inline-block; width: 32px; height: 32px;
+        border: 3px solid var(--line); border-top-color: var(--ink);
+        border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 80px 0; }
+    .empty-text { font-size: 1.05rem; color: var(--muted); }
 </style>
 {% endblock %}
 
@@ -87,35 +174,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const grid = document.getElementById('productGrid');
     const loading = document.getElementById('loading');
     const emptyState = document.getElementById('emptyState');
-    const resultCount = document.getElementById('resultCount');
+    const resultBar = document.getElementById('resultBar');
+    const resultTitle = document.getElementById('resultTitle');
 
     const allModelos = {{ modelos | tojson }};
     let currentProducts = [];
     let currentModelo = '';
 
-    document.querySelectorAll('.brand-pill').forEach(btn => {
+    document.querySelectorAll('.brand-tile').forEach(btn => {
         btn.addEventListener('click', function() {
             const brand = this.dataset.brand;
-            // pick the best-known modelo from this brand and load
             const first = allModelos.find(m => (m.marca||'').toUpperCase() === brand);
             if (first) { input.value = first.modelo; loadProducts(first.modelo); }
+            trackEvent('click', {action: 'brand_tile', brand});
         });
     });
 
     input.addEventListener('input', function() {
         const q = this.value.trim().toLowerCase();
         if (q.length < 1) { sugBox.style.display = 'none'; return; }
-        const matches = allModelos.filter(m => m.modelo.toLowerCase().includes(q)).slice(0, 15);
+        const matches = allModelos.filter(m => m.modelo.toLowerCase().includes(q)).slice(0, 12);
         if (!matches.length) { sugBox.style.display = 'none'; return; }
         sugBox.innerHTML = matches.map(m =>
-            `<button class="list-group-item list-group-item-action" data-modelo="${m.modelo}">
-                <strong>${m.modelo}</strong> <small class="text-muted ms-2">${m.marca || ''}</small>
-            </button>`
+            `<button class="sug-item" data-modelo="${m.modelo}"><strong>${m.modelo}</strong><small>${m.marca || ''}</small></button>`
         ).join('');
         sugBox.style.display = 'block';
     });
-
-    sugBox.addEventListener('click', function(e) {
+    sugBox.addEventListener('click', e => {
         const btn = e.target.closest('[data-modelo]');
         if (btn) { input.value = btn.dataset.modelo; sugBox.style.display = 'none'; loadProducts(btn.dataset.modelo); }
     });
@@ -123,43 +208,54 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!sugBox.contains(e.target) && e.target !== input) sugBox.style.display = 'none';
     });
     input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && input.value.trim()) { e.preventDefault(); loadProducts(input.value.trim()); sugBox.style.display = 'none'; }
+        if (e.key === 'Enter' && input.value.trim()) {
+            e.preventDefault(); loadProducts(input.value.trim()); sugBox.style.display = 'none';
+        }
     });
 
     async function loadProducts(modelo) {
         currentModelo = modelo;
         loading.style.display = 'block';
         emptyState.style.display = 'none';
+        resultBar.style.display = 'none';
         grid.innerHTML = '';
         try {
-            const resp = await fetch(`/api/products?modelo=${encodeURIComponent(modelo)}`);
-            const data = await resp.json();
-            currentProducts = data.products || [];
+            const r = await fetch(`/api/products?modelo=${encodeURIComponent(modelo)}`);
+            const d = await r.json();
+            currentProducts = d.products || [];
             render();
-        } catch (e) { grid.innerHTML = '<div class="alert alert-danger">Error</div>'; }
+        } catch(e) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--accent);">Error</div>'; }
         loading.style.display = 'none';
     }
 
     function render() {
         if (!currentProducts.length) {
-            grid.innerHTML = '';
-            resultCount.innerHTML = `Sin stock para <strong>${currentModelo}</strong>. <a href="https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola, buscan funda para '+currentModelo)}" target="_blank">Preguntanos</a>`;
+            resultBar.style.display = 'block';
+            resultTitle.textContent = `Sin stock para ${currentModelo}`;
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;">
+                <a class="pill wa lg" target="_blank"
+                   href="https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Buscan funda para '+currentModelo)}"
+                   onclick="trackEvent('whatsapp_click',{source:'no_stock'})"
+                ><i class="bi bi-whatsapp"></i> Preguntanos</a>
+            </div>`;
             return;
         }
-        resultCount.textContent = `${currentProducts.length} opciones para ${currentModelo}`;
+        resultBar.style.display = 'block';
+        resultTitle.textContent = `For ${currentModelo}`;
+
         grid.innerHTML = currentProducts.map((p, idx) => `
             <div class="pcard">
                 <div class="img" ${p.image_url ? `onclick="showImage('${p.image_url}')"` : ''}>
-                    ${p.image_url ? `<img src="${p.image_url}" loading="lazy">` : '<i class="bi bi-image text-muted" style="font-size:2rem;"></i>'}
+                    ${p.image_url ? `<img src="${p.image_url}" loading="lazy">` : '<div class="ph"><i class="bi bi-phone"></i></div>'}
                 </div>
-                <div class="body">
+                <div class="info">
                     <h6>${p.estilo}</h6>
-                    <div class="meta">${p.color} · ${p.stock > 0 ? p.stock+' en stock' : 'Agotado'}</div>
+                    <div class="meta">${p.color} · ${p.stock > 0 ? p.stock+' stock' : 'Agotado'}</div>
                     <div class="actions">
-                        <button class="btn btn-primary" data-idx="${idx}" data-action="add" ${p.stock === 0 ? 'disabled' : ''}>
-                            <i class="bi bi-cart-plus"></i>
+                        <button class="pill" data-idx="${idx}" data-action="add" ${p.stock === 0 ? 'disabled' : ''}>
+                            <i class="bi bi-bag-plus"></i>
                         </button>
-                        <button class="btn btn-outline-success" data-idx="${idx}" data-action="wa">
+                        <button class="pill wa" data-idx="${idx}" data-action="wa">
                             <i class="bi bi-whatsapp"></i>
                         </button>
                     </div>
@@ -177,11 +273,6 @@ document.addEventListener('DOMContentLoaded', function() {
             window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(`Hola, me interesa ${p.estilo} ${p.color} para ${currentModelo}`)}`, '_blank');
         }));
     }
-
-    window.showImage = function(url) {
-        document.getElementById('modalImg').src = url;
-        new bootstrap.Modal(document.getElementById('imgModal')).show();
-    };
 
     const pre = new URLSearchParams(window.location.search).get('modelo');
     if (pre) { input.value = pre; loadProducts(pre); }
