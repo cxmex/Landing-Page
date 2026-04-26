@@ -2,6 +2,8 @@
 
 {% block title %}Mayoreo — Fundas Terex{% endblock %}
 
+{% block bestsellers %}{% endblock %}
+
 {% block content %}
 <section class="hero-m">
     <div class="container-x">
@@ -39,6 +41,102 @@
                 <h6>FLEXIBILIDAD DE PAGO</h6>
                 <p>Transferencia, deposito en OXOXO o efectivo en tienda.</p>
             </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Pricing tiers ──────────────────────────────────────────────────── -->
+<section class="tiers">
+    <div class="container-x">
+        <p class="eyebrow" style="text-align:center;">Mientras mas piezas, mejor precio</p>
+        <h2 class="display" style="text-align:center;margin-bottom:36px;">Precios escalonados</h2>
+        <div class="tier-grid">
+            <div class="tier-card">
+                <div class="tier-range">12 - 49</div>
+                <div class="tier-label">piezas</div>
+                <div class="tier-discount">Precio mayoreo</div>
+                <p class="tier-note">Punto de entrada. Ideal para revendedores nuevos o tienditas.</p>
+            </div>
+            <div class="tier-card popular">
+                <span class="tier-tag">MAS COMUN</span>
+                <div class="tier-range">50 - 199</div>
+                <div class="tier-label">piezas</div>
+                <div class="tier-discount">Mejor descuento</div>
+                <p class="tier-note">Tiendas establecidas. La mayoria de nuestros clientes pide en este rango.</p>
+            </div>
+            <div class="tier-card">
+                <div class="tier-range">200 - 499</div>
+                <div class="tier-label">piezas</div>
+                <div class="tier-discount">Volumen alto</div>
+                <p class="tier-note">Cadenas pequenas, e-commerce establecido. Surtido amplio.</p>
+            </div>
+            <div class="tier-card">
+                <div class="tier-range">500+</div>
+                <div class="tier-label">piezas</div>
+                <div class="tier-discount">Negociacion directa</div>
+                <p class="tier-note">Distribuidor. Hablamos contigo de plazos y condiciones especiales.</p>
+            </div>
+        </div>
+        <p class="tier-foot">
+            Los precios exactos los compartimos por WhatsApp despues de conocer tu negocio.
+            <a class="pill wa sm" target="_blank"
+               href="https://wa.me/{{ wa_number }}?text={{ 'Hola, quiero saber precios de mayoreo'|urlencode }}"
+               onclick="trackEvent('whatsapp_click',{source:'mayoreo_tiers'})"
+               style="margin-left:10px;">
+                <i class="bi bi-whatsapp"></i> Pedir lista de precios
+            </a>
+        </p>
+    </div>
+</section>
+
+<!-- ── Who buys from us ───────────────────────────────────────────────── -->
+<section class="who">
+    <div class="container-x">
+        <p class="eyebrow" style="text-align:center;">Quien compra con nosotros</p>
+        <h2 class="display" style="text-align:center;margin-bottom:36px;">Negocios que ya surten con TEREX</h2>
+        <div class="who-grid">
+            <div class="who-card">
+                <i class="bi bi-shop"></i>
+                <h6>Tienditas y misceláneas</h6>
+                <p>Surtimos el rotador de fundas a un costado del mostrador. Reposicion semanal.</p>
+            </div>
+            <div class="who-card">
+                <i class="bi bi-phone"></i>
+                <h6>Reparadores de celulares</h6>
+                <p>Cuando reparas, la funda se vuelve un upsell natural. Margen alto.</p>
+            </div>
+            <div class="who-card">
+                <i class="bi bi-laptop"></i>
+                <h6>E-commerce y tianguistas</h6>
+                <p>Stock inmediato para Mercado Libre, Amazon, Facebook Marketplace, tianguis.</p>
+            </div>
+            <div class="who-card">
+                <i class="bi bi-buildings"></i>
+                <h6>Cadenas regionales</h6>
+                <p>Surtido constante a multiples sucursales con un solo asesor de cuenta.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Testimonials ───────────────────────────────────────────────────── -->
+<section class="testi">
+    <div class="container-x">
+        <p class="eyebrow" style="text-align:center;">Lo que nos dicen</p>
+        <h2 class="display" style="text-align:center;margin-bottom:36px;">Resultados reales de nuestros clientes</h2>
+        <div class="testi-grid">
+            <blockquote class="testi-card">
+                <p>"Empece pidiendo 50 fundas y a las 2 semanas ya estaba pidiendo 200. Lo que mas me gusta es que cuando algo se acaba, lo reponen rapido por WhatsApp."</p>
+                <footer><strong>Mariana R.</strong> · Tienda en Iztapalapa</footer>
+            </blockquote>
+            <blockquote class="testi-card">
+                <p>"Como reparador, yo solo queria fundas para iPhone, pero TEREX me hizo ver que tambien puedo vender Samsung y Motorola. Triplicamos el ticket promedio."</p>
+                <footer><strong>Carlos M.</strong> · Reparador, Tlalnepantla</footer>
+            </blockquote>
+            <blockquote class="testi-card">
+                <p>"Vendo en Mercado Libre. Lo que necesito es stock que no se agote y envio rapido. TEREX cumple las dos. Llevamos 8 meses sin problemas."</p>
+                <footer><strong>Lupita G.</strong> · E-commerce, EdoMex</footer>
+            </blockquote>
         </div>
     </div>
 </section>
@@ -97,6 +195,85 @@
         text-transform: uppercase; margin: 0 0 8px;
     }
     .bcard p { font-size: .9rem; color: var(--muted); margin: 0; }
+
+    /* Pricing tiers */
+    .tiers { padding: 72px 0 56px; }
+    .tier-grid {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
+    }
+    @media (max-width: 1000px) { .tier-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px)  { .tier-grid { grid-template-columns: 1fr; } }
+    .tier-card {
+        background: var(--paper); border: 1px solid var(--line);
+        border-radius: 16px; padding: 28px 22px;
+        position: relative; display: flex; flex-direction: column;
+    }
+    .tier-card.popular { border-color: var(--ink); box-shadow: 0 6px 20px rgba(0,0,0,.06); }
+    .tier-tag {
+        position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+        background: var(--accent); color: var(--paper);
+        padding: 4px 12px; border-radius: 999px;
+        font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+        font-weight: 700; white-space: nowrap;
+    }
+    .tier-range { font-size: 1.8rem; font-weight: 800; letter-spacing: -.02em; }
+    .tier-label {
+        font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+        color: var(--muted); margin-bottom: 14px;
+    }
+    .tier-discount {
+        font-size: .9rem; font-weight: 700; color: var(--accent);
+        margin-bottom: 12px;
+    }
+    .tier-note { color: var(--muted); font-size: .85rem; line-height: 1.5; margin: 0; }
+    .tier-foot {
+        text-align: center; color: var(--muted); margin-top: 32px;
+        font-size: .9rem;
+    }
+
+    /* Who buys */
+    .who { padding: 72px 0; background: var(--soft); }
+    .who-grid {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+    }
+    @media (max-width: 1000px) { .who-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px)  { .who-grid { grid-template-columns: 1fr; } }
+    .who-card {
+        background: var(--paper); border-radius: 16px;
+        padding: 26px 22px;
+    }
+    .who-card i { font-size: 1.7rem; color: var(--ink); }
+    .who-card h6 {
+        font-size: .9rem; font-weight: 700; margin: 14px 0 6px;
+    }
+    .who-card p { color: var(--muted); font-size: .87rem; line-height: 1.55; margin: 0; }
+
+    /* Testimonials */
+    .testi { padding: 72px 0; }
+    .testi-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;
+    }
+    @media (max-width: 900px) { .testi-grid { grid-template-columns: 1fr; } }
+    .testi-card {
+        background: var(--paper); border: 1px solid var(--line);
+        border-radius: 16px; padding: 28px 24px;
+        margin: 0; display: flex; flex-direction: column; gap: 18px;
+        position: relative;
+    }
+    .testi-card::before {
+        content: '"';
+        position: absolute; top: 8px; left: 18px;
+        font-size: 4rem; color: var(--line); font-family: Georgia, serif;
+        line-height: 1;
+    }
+    .testi-card p {
+        margin: 14px 0 0; font-size: .94rem; line-height: 1.6;
+        position: relative; z-index: 1;
+    }
+    .testi-card footer {
+        font-size: .8rem; color: var(--muted); margin-top: auto;
+    }
+    .testi-card footer strong { color: var(--ink); font-weight: 700; }
 
     .cta-form { padding: 64px 0 96px; }
     .form-shell { max-width: 640px; }
