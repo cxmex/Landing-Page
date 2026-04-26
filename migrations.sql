@@ -100,23 +100,26 @@ alter table landing_events enable row level security;
 alter table landing_leads  enable row level security;
 alter table landing_carts  enable row level security;
 
--- Drop existing policies if re-running this script.
-drop policy if exists "anon_insert_events"  on landing_events;
-drop policy if exists "anon_insert_leads"   on landing_leads;
-drop policy if exists "anon_carts_rw"       on landing_carts;
+-- Drop existing policies if re-running this script (covers both old and new names).
+drop policy if exists "anon_insert_events" on landing_events;
+drop policy if exists "anon_insert_leads"  on landing_leads;
+drop policy if exists "anon_carts_rw"      on landing_carts;
+drop policy if exists "lp_insert_events"   on landing_events;
+drop policy if exists "lp_insert_leads"    on landing_leads;
+drop policy if exists "lp_carts_rw"        on landing_carts;
 
--- anon (public): INSERT only into events + leads. No SELECT — leaks of email /
--- WhatsApp / clickstream are the actual sensitive risk here.
-create policy "anon_insert_events" on landing_events
-    for insert to anon with check (true);
+-- INSERT only on events + leads, full RW on carts. Use `to public` so the policy
+-- matches any role PostgREST authenticates as (anon JWT, authenticated, etc.) —
+-- `to anon` was failing in practice on this Supabase project. RLS still denies
+-- SELECT/UPDATE/DELETE on events+leads to non-service-role users (no policies).
+create policy "lp_insert_events" on landing_events
+    for insert to public with check (true);
 
-create policy "anon_insert_leads"  on landing_leads
-    for insert to anon with check (true);
+create policy "lp_insert_leads" on landing_leads
+    for insert to public with check (true);
 
--- anon: full access on landing_carts (session-scoped data, low risk; allows the
--- future server-side cart endpoint to read/write without service-role).
-create policy "anon_carts_rw" on landing_carts
-    for all to anon using (true) with check (true);
+create policy "lp_carts_rw" on landing_carts
+    for all to public using (true) with check (true);
 
 -- service_role bypasses RLS automatically — admin dashboard SELECTs work via
 -- SUPABASE_SERVICE_KEY in the FastAPI env (added separately to .env).
