@@ -291,6 +291,32 @@
         border-color: var(--ink);
     }
     .ok-msg { color: #1a8c4a; font-weight: 500; text-align: center; }
+
+    /* ── Mobile polish ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+        .hero-m { padding: 48px 0 32px; }
+        .hero-m-sub { font-size: .95rem; margin-bottom: 22px; }
+        .hero-m .pill.lg { width: 100%; padding: 14px 18px; font-size: .78rem; }
+        .benefits { padding: 36px 0; }
+        .bgrid { gap: 14px; }
+        .bcard { padding: 18px 16px; }
+        .bcard .num { font-size: 1.4rem; margin-bottom: 8px; }
+        .tiers { padding: 44px 0 36px; }
+        .tier-grid { gap: 14px; }
+        .tier-card { padding: 22px 18px; }
+        .tier-range { font-size: 1.6rem; }
+        .tier-tag { font-size: .58rem; padding: 3px 10px; }
+        .tier-foot { font-size: .82rem; }
+        .tier-foot .pill.sm { display: block; margin: 14px auto 0; width: max-content; }
+        .who { padding: 44px 0; }
+        .who-card { padding: 22px 18px; }
+        .testi { padding: 44px 0; }
+        .testi-card { padding: 24px 20px; }
+        .testi-card p { font-size: .9rem; }
+        .cta-form { padding: 44px 0 64px; }
+        .form-shell h2 { font-size: 1.6rem; }
+        .wform input, .wform select, .wform textarea { padding: 12px 14px; font-size: .92rem; }
+    }
 </style>
 {% endblock %}
 

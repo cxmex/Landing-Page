@@ -163,6 +163,26 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .empty { text-align: center; padding: 80px 0; }
     .empty-text { font-size: 1.05rem; color: var(--muted); }
+
+    /* ── Mobile polish ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+        .hero-b { padding: 36px 0 18px; }
+        .hero-b-title { margin-bottom: 10px; }
+        .hero-b-sub { font-size: .95rem; margin-bottom: 22px; }
+        .search-shell { padding: 4px 4px 4px 18px; }
+        .search-input { padding: 14px 10px; font-size: .95rem; }
+        .brand-grid { margin-top: 22px; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .brand-tile { padding: 16px 8px; }
+        .brand-tile i { font-size: 1.4rem; }
+        .brand-tile span { font-size: .68rem; }
+        .results { padding: 26px 0 8px; }
+        .pcard h6 { font-size: .8rem; }
+        .pcard .meta { font-size: .68rem; }
+        .pcard .actions .pill { padding: 7px 8px; font-size: .58rem; }
+    }
+    @media (max-width: 380px) {
+        .brand-grid { grid-template-columns: repeat(2, 1fr); }
+    }
 </style>
 {% endblock %}
 

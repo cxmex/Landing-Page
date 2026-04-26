@@ -144,6 +144,28 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .empty { text-align: center; padding: 80px 0; }
     .empty-text { font-size: 1.05rem; color: var(--muted); }
+
+    /* ── Mobile polish ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+        .hero-c { padding: 36px 0 18px; }
+        .hero-c-title { margin-bottom: 18px; }
+        .ctype-toggle { width: 100%; padding: 4px; gap: 2px; }
+        .ctype-btn { flex: 1; padding: 10px 10px; font-size: .64rem; letter-spacing: .08em; }
+        .ctype-banner { padding: 16px 18px; margin-bottom: 22px; font-size: .9rem; }
+        .ctype-banner .pill { width: 100%; }
+        .search-shell { padding: 4px 4px 4px 18px; }
+        .search-input { padding: 14px 10px; font-size: .95rem; }
+        .results { padding: 26px 0 8px; }
+        .pcard { padding: 12px; gap: 12px; }
+        .pcard .img { width: 92px; min-width: 92px; }
+        .pcard h6 { font-size: .85rem; }
+        .pcard .meta { font-size: .68rem; }
+        .pcard .actions .pill { padding: 7px 9px; font-size: .58rem; }
+    }
+    @media (max-width: 380px) {
+        .pcard { flex-direction: column; }
+        .pcard .img { width: 100%; aspect-ratio: 4/3; }
+    }
 </style>
 {% endblock %}
 

@@ -241,6 +241,26 @@
         text-transform: uppercase; margin: 12px 0 6px;
     }
     .why-item p { font-size: .85rem; color: var(--muted); margin: 0; }
+
+    /* ── Mobile polish ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+        .hero { padding: 36px 0 18px; }
+        .hero-eyebrow { margin-bottom: 12px; font-size: .68rem; }
+        .hero-title { margin-bottom: 14px; }
+        .hero-sub { font-size: .95rem; margin: 0 auto 24px; }
+        .search-shell { padding: 4px 4px 4px 18px; }
+        .search-input { padding: 14px 10px; font-size: .95rem; }
+        .brand-row { margin-top: 22px; gap: 8px; }
+        .brand-chip { padding: 9px 16px; font-size: .76rem; }
+        .results { padding: 28px 0 8px; }
+        .result-bar { margin-bottom: 20px; gap: 10px; }
+        .sort-row { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .sort-btn { padding: 8px 12px; font-size: .68rem; flex-shrink: 0; }
+        /* On touch, show "Add to bag" overlay always (no hover) */
+        .card .add-overlay { opacity: 1; transform: none; position: static; margin-top: 8px; }
+        .card .info { padding: 10px 2px 0; }
+        .card .info h6 { font-size: .85rem; }
+    }
 </style>
 {% endblock %}
 

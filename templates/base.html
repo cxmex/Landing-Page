@@ -430,6 +430,104 @@
         }
         h1.display { font-size: clamp(2.4rem, 6vw, 4.8rem); }
         h2.display { font-size: clamp(1.6rem, 4vw, 2.6rem); }
+
+        /* ── Hide tel button on small screens (icon already in WA pill) ── */
+        @media (max-width: 600px) { .d-none-sm { display: none !important; } }
+
+        /* ──────────────────────────────────────────────────────────────────
+         * Comprehensive mobile pass
+         * ────────────────────────────────────────────────────────────────── */
+        @media (max-width: 800px) {
+            /* Tighter universal sections on mobile (less wasted space) */
+            .uni-section { padding: 44px 0; }
+            .uni-section .section-sub { margin-bottom: 28px; }
+
+            /* Footer tighter */
+            footer.uni-footer { padding: 40px 20px 28px; }
+            .uni-footer-inner { gap: 26px; }
+        }
+
+        @media (max-width: 600px) {
+            /* Trust strip — allow wrap, smaller */
+            .trust-strip { font-size: .65rem; padding: 7px 12px; line-height: 1.4; }
+
+            /* Social bar — already tightened, ensure no overflow */
+            .social-bar { padding: 10px 8px; }
+            .social-bar-inner { gap: 12px; font-size: .66rem; }
+            .social-bar-item i { font-size: .9rem; }
+
+            /* Nav — tappable icons, no horizontal cramp */
+            .nav { padding: 10px 14px; }
+            .nav .icon-btn { width: 44px; height: 44px; }
+            .nav .logo { font-size: .98rem; }
+            .nav .actions { gap: 4px; }
+            .nav .wa-pill.pill { padding: 10px 14px; font-size: .72rem; }
+
+            /* Universal sections, even tighter on phones */
+            .uni-section { padding: 40px 0; }
+            h2.section-title { font-size: 1.5rem; line-height: 1.15; }
+
+            /* How-it-works — tighter spacing between steps */
+            .uni-how-grid { gap: 22px; }
+            .uni-how-step { padding: 0; }
+
+            /* Why-TEREX — already 2-col at 800px, fine */
+            .uni-why-grid { gap: 22px; }
+
+            /* FAQ — bigger tap area, more comfortable */
+            .faq-q { padding: 20px 4px; font-size: .98rem; }
+            .faq-a-inner { font-size: .92rem; }
+
+            /* Footer — single column already, just polish */
+            .uni-footer-inner { gap: 22px; }
+            .uni-footer h6 { margin-bottom: 10px; }
+            .uni-footer-bottom { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+            /* Bestsellers — keep 2-col, tighten badges + buttons */
+            .bs-grid { gap: 12px; }
+            .bs-card .bs-info { padding: 10px 2px 0; }
+            .bs-card .bs-info h6 { font-size: .82rem; }
+            .bs-card .bs-info .pill { padding: 9px 10px; font-size: .64rem; }
+            .bs-card .bs-badge { padding: 4px 8px; font-size: .55rem; top: 8px; left: 8px; }
+
+            /* Cart drawer — full width feels right on phone */
+            .cart-drawer { width: 100vw; }
+            .cart-drawer header { padding: 18px 18px; }
+            .cart-drawer header h5 { font-size: .85rem; }
+            .cart-drawer .items { padding: 12px 18px; }
+            .cart-drawer footer { padding: 18px; }
+            .cart-item { padding: 12px 0; gap: 10px; }
+            .cart-item img { width: 60px; height: 60px; }
+            .cart-item .info h6 { font-size: .84rem; }
+            .cart-item .info .meta { font-size: .68rem; }
+            .cart-item .x { padding: 10px; font-size: 1.1rem; }
+
+            /* Bounce modal — smaller padding, stacked buttons */
+            .modal-x { padding: 22px 20px; max-width: 360px; }
+            .modal-x h3 { font-size: 1.18rem !important; }
+            .modal-x p { font-size: .88rem; }
+            .modal-x input[type="email"], .modal-x input[type="tel"] {
+                padding: 12px 14px; font-size: .92rem;
+            }
+
+            /* Mobile cart bar — fix exact overlap with WA float */
+            .mobile-cart-bar { padding: 12px 14px; }
+            .mobile-cart-bar .cnt { font-size: .76rem; }
+
+            /* Floating WA — slightly smaller on tiny screens */
+            .wa-float { width: 56px; height: 56px; bottom: 18px; right: 18px; font-size: 1.7rem; }
+            .mobile-cart-bar.show ~ .wa-float { bottom: 76px; }
+        }
+
+        /* iPhone SE / very narrow phones */
+        @media (max-width: 380px) {
+            .nav .wa-pill .label { display: none; }
+            .nav .wa-pill.pill { padding: 10px 12px; }
+            .social-bar-inner { gap: 8px; }
+            .social-bar-item { font-size: .62rem; }
+            h1.display { font-size: 2rem !important; }
+            .modal-x { padding: 20px 16px; }
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
