@@ -6,44 +6,71 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root { --ink: #000; --paper: #fff; --soft: #f5f5f5; --line: #e5e5e5; --muted: #888; --accent: #ff3b30; }
+        :root { --ink: #000; --paper: #fff; --soft: #f5f5f5; --line: #e5e5e5; --muted: #888; --accent: #ff3b30; --green: #1a8c4a; --orange: #f5a623; }
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; margin: 0; background: var(--paper); color: var(--ink); }
-        header { padding: 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; }
+        a { color: inherit; }
+        header { padding: 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
         header h1 { font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; margin: 0; }
         header .meta { font-size: .85rem; color: var(--muted); }
-        main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
-        section { margin-bottom: 48px; }
-        h2 { font-size: 1.1rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin: 0 0 16px; }
+        main { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+        section { margin-bottom: 56px; }
+        h2 { font-size: 1.05rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; margin: 0 0 4px; }
+        .section-sub { color: var(--muted); font-size: .85rem; margin: 0 0 22px; }
 
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
-        @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
-
-        .card {
-            background: var(--paper); border: 1px solid var(--line);
-            border-radius: 16px; padding: 24px; position: relative;
-        }
+        /* ── Variant comparison cards ────────────────────────────────── */
+        .grid-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        @media (max-width: 800px) { .grid-cards { grid-template-columns: 1fr; } }
+        .card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 22px; position: relative; }
         .card.winner { border-color: var(--ink); box-shadow: 0 4px 16px rgba(0,0,0,.06); }
-        .card .label { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
-        .card .vname { font-size: 2.4rem; font-weight: 800; letter-spacing: -.02em; margin: 4px 0 16px; }
-        .winner-badge {
-            position: absolute; top: 16px; right: 16px;
-            background: var(--ink); color: var(--paper);
-            padding: 4px 10px; border-radius: 999px;
-            font-size: .65rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600;
-        }
-        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+        .card .label { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
+        .card .vname { font-size: 2.2rem; font-weight: 800; letter-spacing: -.02em; margin: 4px 0 14px; }
+        .winner-badge { position: absolute; top: 14px; right: 14px; background: var(--ink); color: var(--paper); padding: 4px 10px; border-radius: 999px; font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+        .stat-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: .88rem; }
         .stat-row:last-child { border-bottom: none; }
         .stat-row .key { color: var(--muted); }
         .stat-row .val { font-weight: 600; }
-        .conv { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+        .conv { font-size: 1.05rem; font-weight: 700; color: var(--accent); }
 
-        .empty { padding: 40px; text-align: center; color: var(--muted); background: var(--soft); border-radius: 16px; }
-        .empty code { background: #fff; padding: 2px 6px; border-radius: 4px; }
+        /* ── Drop-off funnel viz ─────────────────────────────────────── */
+        .dropoff-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+        @media (max-width: 900px) { .dropoff-grid { grid-template-columns: 1fr; } }
+        .dropoff-card { border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+        .dropoff-card .vlabel { font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; margin: 0 0 16px; }
+        .step { margin-bottom: 12px; }
+        .step .label { display: flex; justify-content: space-between; align-items: baseline; font-size: .78rem; margin-bottom: 4px; }
+        .step .label .name { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 500; }
+        .step .label .num { font-weight: 700; color: var(--ink); }
+        .step .bar-wrap { background: var(--soft); border-radius: 4px; height: 10px; overflow: hidden; }
+        .step .bar { height: 100%; background: var(--ink); border-radius: 4px; transition: width .4s ease; }
+        .step.s1 .bar { background: #1f2937; }
+        .step.s2 .bar { background: #4b5563; }
+        .step.s3 .bar { background: var(--orange); }
+        .step.s4 .bar { background: var(--green); }
+        .step.s5 .bar { background: var(--accent); }
+        .step .drop { font-size: .68rem; color: var(--muted); margin-top: 2px; }
+        .step .drop.bad { color: var(--accent); }
+        .step .drop.good { color: var(--green); }
 
+        /* ── Two-column row ──────────────────────────────────────────── */
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 900px) { .row2 { grid-template-columns: 1fr; } }
+        .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+        .panel h3 { font-size: .82rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; margin: 0 0 4px; }
+        .panel .panel-sub { font-size: .78rem; color: var(--muted); margin: 0 0 16px; }
+
+        /* ── Bar list (top searches, WA sources) ─────────────────────── */
+        .barlist { display: flex; flex-direction: column; gap: 10px; }
+        .barlist .row { display: grid; grid-template-columns: 1.4fr 2fr auto; gap: 12px; align-items: center; font-size: .85rem; }
+        .barlist .name { color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .barlist .barwrap { background: var(--soft); border-radius: 4px; height: 8px; overflow: hidden; }
+        .barlist .bar { height: 100%; background: var(--ink); border-radius: 4px; transition: width .3s; }
+        .barlist .num { font-weight: 700; font-size: .82rem; color: var(--ink); text-align: right; min-width: 40px; }
+
+        /* ── Tables ──────────────────────────────────────────────────── */
         table { width: 100%; border-collapse: collapse; font-size: .85rem; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); }
-        th { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+        th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+        th { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
         tr:hover td { background: var(--soft); }
 
         .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .7rem; font-weight: 600; }
@@ -51,57 +78,85 @@
         .pill.B { background: #f3e5f5; color: #4a148c; }
         .pill.C { background: #fff3e0; color: #e65100; }
         .pill.evt { background: var(--soft); color: var(--ink); }
+        .pill.lead { background: #d1fae5; color: #065f46; }
 
         .switcher { display: inline-flex; gap: 4px; }
-        .switcher a {
-            padding: 6px 14px; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
-            border-radius: 999px; text-decoration: none; color: var(--ink);
-            background: var(--soft);
-        }
+        .switcher a { padding: 6px 14px; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; border-radius: 999px; text-decoration: none; color: var(--ink); background: var(--soft); }
         .switcher a.active { background: var(--ink); color: var(--paper); }
+
+        .empty { padding: 40px; text-align: center; color: var(--muted); background: var(--soft); border-radius: 14px; font-size: .9rem; }
+        .empty code { background: #fff; padding: 2px 6px; border-radius: 4px; }
+
+        /* ── KPI mini-cards ──────────────────────────────────────────── */
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+        @media (max-width: 700px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+        .kpi { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+        .kpi .k-label { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+        .kpi .k-val { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; margin-top: 4px; }
+        .kpi .k-sub { font-size: .72rem; color: var(--muted); margin-top: 2px; }
     </style>
 </head>
 <body>
 <header>
     <div>
         <h1>A/B FUNNEL</h1>
-        <div class="meta">Last {{ days }} days · {{ total_leads }} total leads</div>
+        <div class="meta">Last {{ days }} days · {{ events_total }} events · {{ total_leads }} total leads</div>
     </div>
     <div class="switcher">
-        <a href="?days=1" class="{% if days == 1 %}active{% endif %}">24h</a>
-        <a href="?days=7" class="{% if days == 7 %}active{% endif %}">7d</a>
+        <a href="?days=1"  class="{% if days == 1  %}active{% endif %}">24h</a>
+        <a href="?days=7"  class="{% if days == 7  %}active{% endif %}">7d</a>
         <a href="?days=14" class="{% if days == 14 %}active{% endif %}">14d</a>
         <a href="?days=30" class="{% if days == 30 %}active{% endif %}">30d</a>
     </div>
 </header>
 
 <main>
+    {# Headline KPIs #}
+    {% set total_sessions = (funnel_steps | sum(attribute='sessions')) %}
+    {% set total_wa = (funnel_steps | sum(attribute='wa_clicks')) %}
+    {% set total_carts = (funnel_steps | sum(attribute='carts')) %}
+    {% set total_leads_window = (funnel_steps | sum(attribute='leads')) %}
+    <div class="kpi-row">
+        <div class="kpi">
+            <div class="k-label">Sessions</div>
+            <div class="k-val">{{ total_sessions }}</div>
+            <div class="k-sub">unique visitors</div>
+        </div>
+        <div class="kpi">
+            <div class="k-label">Carts started</div>
+            <div class="k-val">{{ total_carts }}</div>
+            <div class="k-sub">{% if total_sessions %}{{ "%.1f"|format(total_carts / total_sessions * 100) }}%{% else %}—{% endif %} of sessions</div>
+        </div>
+        <div class="kpi">
+            <div class="k-label">WhatsApp clicks</div>
+            <div class="k-val">{{ total_wa }}</div>
+            <div class="k-sub">{% if total_sessions %}{{ "%.1f"|format(total_wa / total_sessions * 100) }}%{% else %}—{% endif %} conversion</div>
+        </div>
+        <div class="kpi">
+            <div class="k-label">Leads captured</div>
+            <div class="k-val">{{ total_leads_window }}</div>
+            <div class="k-sub">in this window</div>
+        </div>
+    </div>
+
+    {# ── Variant comparison ── #}
     <section>
         <h2>Variant comparison</h2>
+        <p class="section-sub">Headline funnel from <code>landing_funnel_summary</code>. The variant with the highest WhatsApp conversion is leading.</p>
         {% if not summary %}
-            <div class="empty">
-                No events yet (or <code>landing_funnel_summary</code> RPC not deployed). Run <code>migrations.sql</code> in Supabase, then ship traffic to <code>/</code>.
-            </div>
+            <div class="empty">No events yet (or RPC <code>landing_funnel_summary</code> not deployed). Run <code>migrations.sql</code> in Supabase.</div>
         {% else %}
-            {# pick winner = highest WA-click / sessions ratio #}
-            {% set winner = none %}
-            {% set winner_rate = -1 %}
+            {% set winner = none %}{% set winner_rate = -1 %}
             {% for v in summary %}
                 {% set rate = (v.whatsapp_clicks / v.sessions) if v.sessions else 0 %}
-                {% if rate > winner_rate %}
-                    {% set winner = v.variant %}
-                    {% set winner_rate = rate %}
-                {% endif %}
+                {% if rate > winner_rate %}{% set winner = v.variant %}{% set winner_rate = rate %}{% endif %}
             {% endfor %}
-            <div class="grid">
+            <div class="grid-cards">
             {% for v in summary %}
                 <div class="card {% if v.variant == winner and v.sessions > 0 %}winner{% endif %}">
-                    {% if v.variant == winner and v.sessions > 0 %}
-                        <span class="winner-badge">★ Leading</span>
-                    {% endif %}
+                    {% if v.variant == winner and v.sessions > 0 %}<span class="winner-badge">★ Leading</span>{% endif %}
                     <div class="label">Variant</div>
                     <div class="vname">{{ v.variant }}</div>
-
                     <div class="stat-row"><span class="key">Sessions</span><span class="val">{{ v.sessions }}</span></div>
                     <div class="stat-row"><span class="key">Pageviews</span><span class="val">{{ v.pageviews }}</span></div>
                     <div class="stat-row"><span class="key">Add to cart</span><span class="val">{{ v.add_to_carts }}</span></div>
@@ -109,9 +164,7 @@
                     <div class="stat-row"><span class="key">Email leads</span><span class="val">{{ v.leads }}</span></div>
                     <div class="stat-row">
                         <span class="key">WA conversion</span>
-                        <span class="val conv">
-                            {% if v.sessions %}{{ "%.1f"|format(v.whatsapp_clicks / v.sessions * 100) }}%{% else %}—{% endif %}
-                        </span>
+                        <span class="val conv">{% if v.sessions %}{{ "%.1f"|format(v.whatsapp_clicks / v.sessions * 100) }}%{% else %}—{% endif %}</span>
                     </div>
                 </div>
             {% endfor %}
@@ -119,38 +172,190 @@
         {% endif %}
     </section>
 
+    {# ── Drop-off funnel ── #}
     <section>
-        <h2>Recent events</h2>
-        {% if not recent_events %}
-            <div class="empty">No events yet.</div>
+        <h2>Drop-off funnel</h2>
+        <p class="section-sub">Where visitors leave between each step. Fat bars at the top, thin bars at the bottom = healthy. Big drops between two steps = a friction point to fix.</p>
+        {% if not funnel_steps %}
+            <div class="empty">No event data in this window.</div>
+        {% else %}
+            {% set max_sessions = funnel_steps | map(attribute='sessions') | max %}
+            {% if max_sessions == 0 %}{% set max_sessions = 1 %}{% endif %}
+            <div class="dropoff-grid">
+                {% for v in funnel_steps %}
+                <div class="dropoff-card">
+                    <div class="vlabel">{{ v.variant }}</div>
+                    {% set steps_def = [
+                        ("Sessions",   v.sessions,  's1', None),
+                        ("Pageviews",  v.pageviews, 's1', v.sessions),
+                        ("Searches",   v.searches,  's2', v.pageviews),
+                        ("Add to cart",v.carts,     's3', v.searches if v.searches > 0 else v.pageviews),
+                        ("WA clicks",  v.wa_clicks, 's4', v.carts if v.carts > 0 else v.pageviews),
+                        ("Leads",      v.leads,     's5', v.sessions),
+                    ] %}
+                    {% for label, count, cls, prev in steps_def %}
+                        {% set width = (count / max_sessions * 100) if max_sessions else 0 %}
+                        <div class="step {{ cls }}">
+                            <div class="label">
+                                <span class="name">{{ label }}</span>
+                                <span class="num">{{ count }}</span>
+                            </div>
+                            <div class="bar-wrap"><div class="bar" style="width: {{ width }}%;"></div></div>
+                            {% if prev is not none and prev > 0 %}
+                                {% set conv = (count / prev * 100) %}
+                                {% set drop = 100 - conv %}
+                                <div class="drop {% if drop > 80 %}bad{% elif drop < 30 %}good{% endif %}">
+                                    {{ "%.1f"|format(conv) }}% from prev step
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
+    {# ── Top searches + WA sources side by side ── #}
+    <section>
+        <div class="row2">
+            <div class="panel">
+                <h3>Top searched models</h3>
+                <p class="panel-sub">What visitors are typing into the search bar. Use this to pick which models to advertise.</p>
+                {% if not top_searches %}
+                    <div class="empty" style="padding:20px;">No searches yet.</div>
+                {% else %}
+                    {% set max_search = top_searches[0][1] %}
+                    <div class="barlist">
+                        {% for modelo, n in top_searches %}
+                        <div class="row">
+                            <span class="name">{{ modelo }}</span>
+                            <span class="barwrap"><span class="bar" style="width: {{ (n / max_search * 100) if max_search else 0 }}%;"></span></span>
+                            <span class="num">{{ n }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="panel">
+                <h3>WhatsApp click sources</h3>
+                <p class="panel-sub">Which CTAs drive the most chats. Tells you where to add buttons or where to remove friction.</p>
+                {% if not wa_sources %}
+                    <div class="empty" style="padding:20px;">No WhatsApp clicks yet.</div>
+                {% else %}
+                    {% set max_src = wa_sources[0][1] %}
+                    <div class="barlist">
+                        {% for src, n in wa_sources %}
+                        <div class="row">
+                            <span class="name">{{ src }}</span>
+                            <span class="barwrap"><span class="bar" style="width: {{ (n / max_src * 100) if max_src else 0 }}%; background: var(--green);"></span></span>
+                            <span class="num">{{ n }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    {# ── UTM campaign breakdown ── #}
+    <section>
+        <h2>UTM campaign breakdown</h2>
+        <p class="section-sub">Sessions and conversions by traffic source / campaign. Once you run multiple FB ads, this is what tells you which campaigns to scale up vs kill.</p>
+        {% if not utm_rows %}
+            <div class="empty">No UTM-tagged traffic in this window.</div>
         {% else %}
         <div style="overflow-x:auto;">
         <table>
-            <thead>
-                <tr>
-                    <th>When</th>
-                    <th>Variant</th>
-                    <th>Event</th>
-                    <th>Modelo</th>
-                    <th>WA phone</th>
-                    <th>Source</th>
-                </tr>
-            </thead>
+            <thead><tr>
+                <th>Source / campaign</th>
+                <th style="text-align:right;">Sessions</th>
+                <th style="text-align:right;">WA clicks</th>
+                <th style="text-align:right;">Leads</th>
+                <th style="text-align:right;">WA %</th>
+            </tr></thead>
             <tbody>
-                {% for e in recent_events %}
+                {% for r in utm_rows %}
                 <tr>
-                    <td>{{ e.created_at[:19].replace('T', ' ') }}</td>
-                    <td>{% if e.variant %}<span class="pill {{ e.variant }}">{{ e.variant }}</span>{% endif %}</td>
-                    <td><span class="pill evt">{{ e.event_type }}</span></td>
-                    <td>{{ e.modelo or '' }}</td>
-                    <td>{{ e.wa_phone or '' }}</td>
-                    <td>{{ (e.utm_source or '') ~ (' / ' ~ e.utm_campaign if e.utm_campaign else '') }}</td>
+                    <td><code style="font-size:.78rem;background:var(--soft);padding:2px 6px;border-radius:4px;">{{ r.campaign }}</code></td>
+                    <td style="text-align:right;">{{ r.sessions }}</td>
+                    <td style="text-align:right;">{{ r.wa_clicks }}</td>
+                    <td style="text-align:right;">{{ r.leads }}</td>
+                    <td style="text-align:right;font-weight:700;color:var(--accent);">{{ r.wa_pct }}%</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         </div>
         {% endif %}
+    </section>
+
+    {# ── Recent leads ── #}
+    <section>
+        <h2>Recent leads</h2>
+        <p class="section-sub">Captured contacts in this window — bounce-modal emails, mayoreo forms, inline forms.</p>
+        {% if not leads_in_window %}
+            <div class="empty">No leads captured in this window.</div>
+        {% else %}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead><tr>
+                <th>When</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Type</th>
+                <th>Source</th>
+                <th>Variant</th>
+            </tr></thead>
+            <tbody>
+                {% for l in leads_in_window %}
+                <tr>
+                    <td style="white-space:nowrap;">{{ l.created_at[:16].replace('T', ' ') }}</td>
+                    <td>{{ l.name or '—' }}</td>
+                    <td>{{ l.phone or '—' }}</td>
+                    <td>{{ l.email or '—' }}</td>
+                    <td>{% if l.customer_type %}<span class="pill lead">{{ l.customer_type }}</span>{% endif %}</td>
+                    <td><code style="font-size:.74rem;color:var(--muted);">{{ l.source or '—' }}</code></td>
+                    <td>{% if l.variant %}<span class="pill {{ l.variant }}">{{ l.variant }}</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% endif %}
+    </section>
+
+    {# ── Recent events (collapsible) ── #}
+    <section>
+        <details>
+            <summary style="cursor:pointer;font-size:1.05rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:16px;">
+                Live activity ({{ recent_events | length }} most recent)
+            </summary>
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table>
+                <thead><tr>
+                    <th>When</th>
+                    <th>Variant</th>
+                    <th>Event</th>
+                    <th>Modelo</th>
+                    <th>Source</th>
+                </tr></thead>
+                <tbody>
+                    {% for e in recent_events %}
+                    <tr>
+                        <td style="white-space:nowrap;">{{ e.created_at[:19].replace('T', ' ') }}</td>
+                        <td>{% if e.variant %}<span class="pill {{ e.variant }}">{{ e.variant }}</span>{% endif %}</td>
+                        <td><span class="pill evt">{{ e.event_type }}</span></td>
+                        <td>{{ e.modelo or '' }}</td>
+                        <td>{{ (e.utm_source or '') ~ (' / ' ~ e.utm_campaign if e.utm_campaign else '') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </details>
     </section>
 </main>
 </body>

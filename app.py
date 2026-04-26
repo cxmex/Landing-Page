@@ -624,25 +624,127 @@ async def _admin_supabase_rpc(name: str, params: dict):
     return resp.json()
 
 
+def _aggregate_funnel(events: list, leads: list) -> dict:
+    """Compute funnel breakdowns from raw event/lead lists.
+    Cheap because volume is small — at hundreds of thousands we'd push this
+    into Postgres views, but for an A/B test landing page it's fine."""
+    from collections import Counter, defaultdict
+
+    # Per-variant step counts (sessions, pageviews, search, add_to_cart, wa_click, lead)
+    sessions_by_variant = defaultdict(set)
+    step_counts = defaultdict(lambda: Counter())  # step_counts[variant][event_type] = count
+    wa_sources = Counter()
+    top_searches = Counter()
+    utm_breakdown = defaultdict(lambda: {"sessions": set(), "wa_clicks": 0, "leads": 0})
+
+    for e in events:
+        v = e.get("variant") or "—"
+        sid = e.get("session_id")
+        et = e.get("event_type", "")
+        if sid:
+            sessions_by_variant[v].add(sid)
+        step_counts[v][et] += 1
+
+        if et == "whatsapp_click":
+            md = e.get("metadata") or {}
+            src = md.get("source") if isinstance(md, dict) else None
+            wa_sources[src or "unknown"] += 1
+
+        if et == "search" and e.get("modelo"):
+            top_searches[e["modelo"]] += 1
+
+        utm = e.get("utm_campaign") or e.get("utm_source") or "(direct)"
+        if sid:
+            utm_breakdown[utm]["sessions"].add(sid)
+        if et == "whatsapp_click":
+            utm_breakdown[utm]["wa_clicks"] += 1
+
+    for l in leads:
+        utm = l.get("utm_campaign") or l.get("utm_source") or "(direct)"
+        utm_breakdown[utm]["leads"] += 1
+
+    # Build per-variant funnel rows for the drop-off chart
+    funnel_steps = []
+    for v in sorted(sessions_by_variant.keys()):
+        sess = len(sessions_by_variant[v])
+        pv = step_counts[v].get("pageview", 0)
+        srch = step_counts[v].get("search", 0)
+        cart = step_counts[v].get("add_to_cart", 0)
+        wac = step_counts[v].get("whatsapp_click", 0)
+        # Leads attributed to this variant via the leads table
+        leads_v = sum(1 for l in leads if (l.get("variant") or "—") == v)
+        funnel_steps.append({
+            "variant": v,
+            "sessions": sess,
+            "pageviews": pv,
+            "searches": srch,
+            "carts": cart,
+            "wa_clicks": wac,
+            "leads": leads_v,
+        })
+
+    utm_rows = []
+    for k, val in sorted(utm_breakdown.items(), key=lambda kv: -len(kv[1]["sessions"])):
+        s = len(val["sessions"])
+        if s == 0 and val["wa_clicks"] == 0 and val["leads"] == 0:
+            continue
+        utm_rows.append({
+            "campaign": k,
+            "sessions": s,
+            "wa_clicks": val["wa_clicks"],
+            "leads": val["leads"],
+            "wa_pct": round(100 * val["wa_clicks"] / s, 1) if s else 0,
+        })
+
+    return {
+        "funnel_steps": funnel_steps,
+        "wa_sources": wa_sources.most_common(8),
+        "top_searches": top_searches.most_common(10),
+        "utm_rows": utm_rows[:10],
+    }
+
+
 @app.get("/admin/funnel", response_class=HTMLResponse)
 async def admin_funnel(request: Request, days: int = 14, _user: str = Depends(require_admin)):
-    """A/B test funnel readout — variant comparison from landing_funnel_summary RPC."""
+    """A/B test funnel readout — variant comparison + drop-off + UTM + sources."""
     try:
         summary = await _admin_supabase_rpc("landing_funnel_summary", {"p_days": days})
     except HTTPException:
-        # RPC may not exist yet — show empty state with hint to run migrations
         summary = []
 
-    total_leads = await _admin_supabase_get(
-        "landing_leads",
-        params={"select": "id", "order": "created_at.desc"},
+    # Pull all events + leads in the window (one round-trip each via service_role)
+    cutoff = f"now() - interval '{days} days'"  # not interpolated into URL — use server-side timestamp instead
+    # PostgREST: filter created_at >= some ISO timestamp. Compute it in Python.
+    from datetime import datetime, timedelta, timezone
+    since_iso = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    events, leads_in_window, all_leads = await asyncio.gather(
+        _admin_supabase_get(
+            "landing_events",
+            params={
+                "select": "created_at,session_id,variant,event_type,modelo,utm_source,utm_campaign,metadata,wa_phone",
+                "order": "created_at.desc",
+                "created_at": f"gte.{since_iso}",
+            },
+            range_header="0-9999",
+        ),
+        _admin_supabase_get(
+            "landing_leads",
+            params={
+                "select": "id,created_at,variant,name,phone,email,customer_type,source,utm_source,utm_campaign",
+                "order": "created_at.desc",
+                "created_at": f"gte.{since_iso}",
+            },
+            range_header="0-499",
+        ),
+        _admin_supabase_get(
+            "landing_leads",
+            params={"select": "id"},
+            range_header="0-9999",
+        ),
     )
-    recent_events = await _admin_supabase_get(
-        "landing_events",
-        params={"select": "created_at,variant,event_type,modelo,wa_phone,utm_source,utm_campaign",
-                "order": "created_at.desc"},
-        range_header="0-99",
-    )
+
+    breakdowns = _aggregate_funnel(events, leads_in_window)
 
     return templates.TemplateResponse(
         request=request,
@@ -650,8 +752,11 @@ async def admin_funnel(request: Request, days: int = 14, _user: str = Depends(re
         context={
             "summary": summary,
             "days": days,
-            "total_leads": len(total_leads),
-            "recent_events": recent_events,
+            "total_leads": len(all_leads),
+            "leads_in_window": leads_in_window[:20],
+            "events_total": len(events),
+            "recent_events": events[:80],
+            **breakdowns,
         },
     )
 
