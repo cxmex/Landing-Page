@@ -547,6 +547,40 @@ async def api_track(request: Request):
     return {"ok": True}
 
 
+@app.post("/api/cart")
+async def api_cart_save(request: Request):
+    """Persist cart contents to landing_carts (upsert by session_id).
+    Called on every add/remove from the client so we can recover
+    abandoned carts and surface 'active baskets' in the admin dashboard."""
+    body = await request.json()
+    session_id = get_or_create_session_id(request)
+    variant = request.cookies.get(VARIANT_COOKIE)
+    items = body.get("items") or []
+    if not isinstance(items, list):
+        raise HTTPException(400, "items must be a list")
+    customer_type = (body.get("customer_type") or "unknown")[:32]
+    from datetime import datetime, timezone
+    payload = {
+        "session_id": session_id,
+        "variant": variant,
+        "items": items,
+        "customer_type": customer_type,
+        "status": body.get("status") or "open",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Upsert via Prefer: resolution=merge-duplicates on session_id (unique)
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{SUPABASE_URL}/rest/v1/landing_carts",
+            headers={**HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"},
+            params={"on_conflict": "session_id"},
+            json=[payload],
+        )
+    if resp.status_code >= 400:
+        print(f"[api_cart] {resp.status_code} {resp.text}")
+    return {"ok": True, "session_id": session_id}
+
+
 @app.post("/api/lead")
 async def api_lead(
     request: Request,

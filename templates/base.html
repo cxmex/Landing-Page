@@ -673,6 +673,15 @@
     </header>
     <div class="items" id="cartItems"></div>
     <footer>
+        <form id="cartSaveForm" style="display:none;flex-direction:column;gap:8px;margin-bottom:14px;padding:12px;background:var(--soft);border-radius:10px;">
+            <p style="margin:0;font-size:.78rem;color:var(--muted);text-align:center;">
+                <i class="bi bi-bookmark-heart"></i> Guarda tu seleccion — te avisamos si algo se acaba
+            </p>
+            <input type="tel" name="phone" placeholder="WhatsApp" inputmode="tel"
+                   style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:.88rem;font-family:inherit;outline:none;">
+            <button type="submit" class="pill outline" style="font-size:.7rem;">Guardar seleccion</button>
+            <p id="cartSaveOk" style="display:none;color:#1a8c4a;font-size:.78rem;text-align:center;margin:0;">Guardado. Te escribimos pronto.</p>
+        </form>
         <button class="pill wa lg w-100" id="cartWaBtn" style="width:100%;">
             <i class="bi bi-whatsapp"></i> Pedir por WhatsApp
         </button>
@@ -682,20 +691,30 @@
     </footer>
 </aside>
 
-<!-- Bounce modal -->
+<!-- Bounce / capture modal -->
 <div class="modal-x-backdrop" id="bounceBackdrop">
     <div class="modal-x">
         <button class="close-x" data-close-bounce>&times;</button>
-        <h3>No te vayas todavia</h3>
-        <p>Dejanos tu correo y te avisamos de nuevos modelos y promociones.</p>
-        <form id="leadForm">
-            <input type="email" name="email" placeholder="tu@correo.com" required>
-            <input type="hidden" name="source" value="bounce_modal">
-            <button type="submit" class="pill lg" style="width:100%;">Quiero recibir avisos</button>
+        <div style="text-align:center;margin-bottom:6px;">
+            <span style="display:inline-block;background:var(--accent);color:var(--paper);padding:4px 12px;border-radius:999px;font-size:.65rem;letter-spacing:.16em;text-transform:uppercase;font-weight:700;">10% OFF</span>
+        </div>
+        <h3 style="text-align:center;font-size:1.4rem;letter-spacing:-.01em;margin:8px 0 6px;">Espera — descuento en tu primera compra</h3>
+        <p style="text-align:center;">Dejanos tu WhatsApp o correo y te mandamos el codigo <strong>TEREX10</strong> al instante.</p>
+        <form id="leadForm" style="display:flex;flex-direction:column;gap:10px;">
+            <input type="tel" name="phone" placeholder="WhatsApp (recomendado)" inputmode="tel" autocomplete="tel"
+                   style="border:1px solid var(--line);border-radius:8px;padding:14px 16px;font-size:.95rem;font-family:inherit;outline:none;">
+            <div style="text-align:center;color:var(--muted);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;">o</div>
+            <input type="email" name="email" placeholder="tu@correo.com" autocomplete="email">
+            <input type="hidden" name="source" id="leadSource" value="bounce_modal">
+            <button type="submit" class="pill lg" style="width:100%;margin-top:6px;">Quiero mi 10% de descuento</button>
         </form>
-        <p id="leadOk" style="color:#1a8c4a;font-size:.85rem;margin-top:10px;display:none;">
-            Listo, te avisamos pronto.
-        </p>
+        <div id="leadOk" style="display:none;text-align:center;margin-top:14px;">
+            <p style="color:#1a8c4a;font-size:.95rem;font-weight:600;margin:0 0 8px;">Listo. Tu codigo:</p>
+            <div style="background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:8px;font-family:ui-monospace,monospace;font-size:1.2rem;letter-spacing:.16em;font-weight:700;display:inline-block;">TEREX10</div>
+            <a id="leadWaBtn" class="pill wa lg" target="_blank" style="display:flex;margin-top:14px;width:100%;">
+                <i class="bi bi-whatsapp"></i> Ir a WhatsApp y aplicar codigo
+            </a>
+        </div>
     </div>
 </div>
 
@@ -725,7 +744,30 @@
     // ── Cart ──────────────────────────────────────────────────────────────
     const CART_KEY = 'lp_cart_v1';
     function readCart() { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; } }
-    function writeCart(items) { localStorage.setItem(CART_KEY, JSON.stringify(items)); renderCartCount(); }
+    function writeCart(items) { localStorage.setItem(CART_KEY, JSON.stringify(items)); renderCartCount(); syncCartToServer(); }
+    let _cartSyncTimer = null;
+    function syncCartToServer() {
+        clearTimeout(_cartSyncTimer);
+        _cartSyncTimer = setTimeout(() => {
+            const cart = readCart();
+            const payload = {items: cart, status: cart.length ? 'open' : 'empty'};
+            try {
+                fetch('/api/cart', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                    keepalive: true,
+                });
+            } catch (e) { /* swallow */ }
+        }, 800);
+    }
+    // Show cart-save form once cart has items (after first add)
+    function maybeShowCartSaveForm() {
+        const f = document.getElementById('cartSaveForm');
+        if (!f) return;
+        const cart = readCart();
+        f.style.display = cart.length ? 'flex' : 'none';
+    }
     function renderCartCount() {
         const total = readCart().reduce((s, i) => s + (i.qty || 1), 0);
         const el = document.getElementById('cartCount');
@@ -777,6 +819,7 @@
         document.getElementById('cartDrawer').classList.add('open');
         document.getElementById('cartBackdrop').classList.add('open');
         renderCartItems();
+        maybeShowCartSaveForm();
     }
     function closeCart() {
         document.getElementById('cartDrawer').classList.remove('open');
@@ -795,23 +838,61 @@
         window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
     });
 
-    // ── Lead form ─────────────────────────────────────────────────────────
+    // ── Lead form (bounce / discount capture) ────────────────────────────
     document.getElementById('leadForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const fd = new FormData(this);
+        if (!fd.get('phone') && !fd.get('email')) {
+            alert('Dejanos tu WhatsApp o correo');
+            return;
+        }
         const r = await fetch('/api/lead', {method:'POST', body: fd});
         if (r.ok) {
-            this.reset();
-            document.getElementById('leadOk').style.display = 'block';
-            setTimeout(closeBounce, 1500);
+            this.style.display = 'none';
+            const ok = document.getElementById('leadOk');
+            ok.style.display = 'block';
+            // Build pre-filled WhatsApp link with the discount code
+            const cart = readCart();
+            const cartLines = cart.length
+                ? '\n' + cart.map(c => `- ${c.estilo} ${c.color} (${c.modelo||''}) x${c.qty}`).join('\n')
+                : '';
+            const msg = `Hola, vengo de la pagina con el codigo TEREX10 (10% off).${cartLines}`;
+            document.getElementById('leadWaBtn').href =
+                `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
+            trackEvent('lead_submit', {source: document.getElementById('leadSource').value});
+            // Mark this session as captured so we don't re-trigger the modal
+            try { localStorage.setItem('lp_captured', '1'); } catch(_) {}
         }
     });
 
-    // ── Bounce modal ──────────────────────────────────────────────────────
+    // ── Cart-save inline form (in drawer) ─────────────────────────────────
+    const cartSaveForm = document.getElementById('cartSaveForm');
+    if (cartSaveForm) cartSaveForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd = new FormData(this);
+        if (!fd.get('phone')) { alert('Dejanos tu WhatsApp'); return; }
+        fd.append('source', 'cart_save');
+        fd.append('customer_type', 'retail');
+        const r = await fetch('/api/lead', {method:'POST', body: fd});
+        if (r.ok) {
+            this.querySelector('input[name="phone"]').value = '';
+            this.querySelector('button').style.display = 'none';
+            document.getElementById('cartSaveOk').style.display = 'block';
+            trackEvent('lead_submit', {source: 'cart_save'});
+            try { localStorage.setItem('lp_captured', '1'); } catch(_) {}
+        }
+    });
+
+    // ── Bounce / capture modal ────────────────────────────────────────────
     let bounceShown = false;
-    function openBounce() {
+    function alreadyCaptured() {
+        try { return localStorage.getItem('lp_captured') === '1'; } catch { return false; }
+    }
+    function openBounce(source) {
+        if (bounceShown || alreadyCaptured()) return;
         bounceShown = true;
-        trackEvent('bounce');
+        document.getElementById('leadSource').value = source || 'bounce_modal';
+        trackEvent('bounce', {source: source || 'desktop_mouseleave'});
         document.getElementById('bounceBackdrop').classList.add('open');
     }
     function closeBounce() { document.getElementById('bounceBackdrop').classList.remove('open'); }
@@ -819,8 +900,38 @@
     document.getElementById('bounceBackdrop').addEventListener('click', e => {
         if (e.target.id === 'bounceBackdrop') closeBounce();
     });
+
+    // Desktop: mouse leaves the top of viewport → about to close tab
     document.addEventListener('mouseleave', function(e) {
-        if (!bounceShown && e.clientY <= 0) openBounce();
+        if (e.clientY <= 0) openBounce('desktop_mouseleave');
+    });
+
+    // Mobile: 35s of inactivity AND has scrolled at least once → engaged but stalling
+    const isMobile = window.innerWidth <= 800 || /Mobi|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+        let scrolled = false, lastActivity = Date.now();
+        ['scroll','touchstart','click'].forEach(ev =>
+            window.addEventListener(ev, () => { scrolled = true; lastActivity = Date.now(); }, {passive:true})
+        );
+        // Periodically check; trigger after 35s idle
+        setInterval(() => {
+            if (scrolled && Date.now() - lastActivity > 35000) openBounce('mobile_idle');
+        }, 5000);
+        // Trigger on browser back-from-history (BFCache restore = signal of "almost left")
+        window.addEventListener('pageshow', e => {
+            if (e.persisted) openBounce('mobile_pageshow');
+        });
+    }
+
+    // Either platform: trigger when tab becomes hidden if cart has items but not bought
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && readCart().length > 0 && !alreadyCaptured()) {
+            // Best-effort flag; modal will show next time they're back
+            sessionStorage.setItem('lp_show_bounce_on_return', '1');
+        } else if (document.visibilityState === 'visible' && sessionStorage.getItem('lp_show_bounce_on_return')) {
+            sessionStorage.removeItem('lp_show_bounce_on_return');
+            setTimeout(() => openBounce('return_with_cart'), 600);
+        }
     });
 
     // ── Lightbox ──────────────────────────────────────────────────────────
@@ -836,6 +947,7 @@
     });
 
     renderCartCount();
+    if (readCart().length > 0) syncCartToServer();
 
     // ── FAQ accordions ────────────────────────────────────────────────────
     document.querySelectorAll('.faq-q').forEach(q => q.addEventListener('click', function() {
