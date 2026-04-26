@@ -696,23 +696,22 @@
     <div class="modal-x">
         <button class="close-x" data-close-bounce>&times;</button>
         <div style="text-align:center;margin-bottom:6px;">
-            <span style="display:inline-block;background:var(--accent);color:var(--paper);padding:4px 12px;border-radius:999px;font-size:.65rem;letter-spacing:.16em;text-transform:uppercase;font-weight:700;">10% OFF</span>
+            <span style="display:inline-block;background:var(--ink);color:var(--paper);padding:4px 12px;border-radius:999px;font-size:.65rem;letter-spacing:.16em;text-transform:uppercase;font-weight:700;">Acceso anticipado</span>
         </div>
-        <h3 style="text-align:center;font-size:1.4rem;letter-spacing:-.01em;margin:8px 0 6px;">Espera — descuento en tu primera compra</h3>
-        <p style="text-align:center;">Dejanos tu WhatsApp o correo y te mandamos el codigo <strong>TEREX10</strong> al instante.</p>
+        <h3 style="text-align:center;font-size:1.4rem;letter-spacing:-.01em;margin:8px 0 6px;">No te vayas con las manos vacias</h3>
+        <p style="text-align:center;">Dejanos tu WhatsApp o correo y te avisamos cuando llegue tu modelo o haya promociones para suscriptores.</p>
         <form id="leadForm" style="display:flex;flex-direction:column;gap:10px;">
             <input type="tel" name="phone" placeholder="WhatsApp (recomendado)" inputmode="tel" autocomplete="tel"
                    style="border:1px solid var(--line);border-radius:8px;padding:14px 16px;font-size:.95rem;font-family:inherit;outline:none;">
             <div style="text-align:center;color:var(--muted);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;">o</div>
             <input type="email" name="email" placeholder="tu@correo.com" autocomplete="email">
             <input type="hidden" name="source" id="leadSource" value="bounce_modal">
-            <button type="submit" class="pill lg" style="width:100%;margin-top:6px;">Quiero mi 10% de descuento</button>
+            <button type="submit" class="pill lg" style="width:100%;margin-top:6px;">Quiero recibir avisos</button>
         </form>
         <div id="leadOk" style="display:none;text-align:center;margin-top:14px;">
-            <p style="color:#1a8c4a;font-size:.95rem;font-weight:600;margin:0 0 8px;">Listo. Tu codigo:</p>
-            <div style="background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:8px;font-family:ui-monospace,monospace;font-size:1.2rem;letter-spacing:.16em;font-weight:700;display:inline-block;">TEREX10</div>
+            <p style="color:#1a8c4a;font-size:.95rem;font-weight:600;margin:0;">Listo. Te avisamos en cuanto haya algo para ti.</p>
             <a id="leadWaBtn" class="pill wa lg" target="_blank" style="display:flex;margin-top:14px;width:100%;">
-                <i class="bi bi-whatsapp"></i> Ir a WhatsApp y aplicar codigo
+                <i class="bi bi-whatsapp"></i> Tambien puedes escribirnos por WhatsApp
             </a>
         </div>
     </div>
@@ -851,12 +850,12 @@
             this.style.display = 'none';
             const ok = document.getElementById('leadOk');
             ok.style.display = 'block';
-            // Build pre-filled WhatsApp link with the discount code
+            // Optional WhatsApp follow-up — pre-fill with cart contents if any.
             const cart = readCart();
             const cartLines = cart.length
-                ? '\n' + cart.map(c => `- ${c.estilo} ${c.color} (${c.modelo||''}) x${c.qty}`).join('\n')
+                ? '\n\nTengo en mi seleccion:\n' + cart.map(c => `- ${c.estilo} ${c.color} (${c.modelo||''}) x${c.qty}`).join('\n')
                 : '';
-            const msg = `Hola, vengo de la pagina con el codigo TEREX10 (10% off).${cartLines}`;
+            const msg = `Hola, deje mis datos en la pagina y me interesa una funda.${cartLines}`;
             document.getElementById('leadWaBtn').href =
                 `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
             trackEvent('lead_submit', {source: document.getElementById('leadSource').value});
