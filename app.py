@@ -47,7 +47,11 @@ HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
-    "Prefer": "return=representation",
+    # return=minimal: PostgREST skips the post-insert SELECT. Required because
+    # landing_events/landing_leads have no SELECT policy for anon (by design —
+    # protects lead data), so return=representation triggers an RLS rollback
+    # and silently drops every write.
+    "Prefer": "return=minimal",
 }
 
 ADMIN_HEADERS = {
@@ -96,7 +100,8 @@ async def supabase_post(path: str, json_data, params: Optional[dict] = None):
         # Don't crash the page on logging errors — log and continue.
         print(f"[supabase_post {path}] {resp.status_code} {resp.text}")
         return None
-    return resp.json()
+    # 201 with return=minimal returns no body; callers don't use the response.
+    return None
 
 
 async def supabase_rpc(name: str, params: Optional[dict] = None):
