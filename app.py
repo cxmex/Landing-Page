@@ -25,6 +25,9 @@ load_dotenv()
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://gbkhkbfbarsnpbdkxzii.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+# service_role key bypasses RLS — used only for admin dashboard reads. If unset,
+# falls back to SUPABASE_KEY (which works only if RLS is off or grants anon SELECT).
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "") or SUPABASE_KEY
 WHATSAPP_NUMBER = os.environ.get("WHATSAPP_NUMBER", "525545174085")
 WHATSAPP_DEFAULT_MESSAGE = os.environ.get(
     "WHATSAPP_DEFAULT_MESSAGE",
@@ -43,6 +46,13 @@ if not SUPABASE_KEY:
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+}
+
+ADMIN_HEADERS = {
+    "apikey": SUPABASE_SERVICE_KEY,
+    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
     "Content-Type": "application/json",
     "Prefer": "return=representation",
 }
@@ -468,21 +478,45 @@ def require_admin(credentials: HTTPBasicCredentials = Depends(basic_auth)):
     return credentials.username
 
 
+async def _admin_supabase_get(path: str, params: dict, range_header: str = "0-9999"):
+    """Admin reads use service_role key (bypasses RLS)."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            f"{SUPABASE_URL}/rest/v1/{path}",
+            headers={**ADMIN_HEADERS, "Range": range_header},
+            params=params,
+        )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Admin GET {path}: {resp.text}")
+    return resp.json()
+
+
+async def _admin_supabase_rpc(name: str, params: dict):
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/{name}",
+            headers=ADMIN_HEADERS,
+            json=params,
+        )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Admin RPC {name}: {resp.text}")
+    return resp.json()
+
+
 @app.get("/admin/funnel", response_class=HTMLResponse)
 async def admin_funnel(request: Request, days: int = 14, _user: str = Depends(require_admin)):
     """A/B test funnel readout — variant comparison from landing_funnel_summary RPC."""
     try:
-        summary = await supabase_rpc("landing_funnel_summary", {"p_days": days})
+        summary = await _admin_supabase_rpc("landing_funnel_summary", {"p_days": days})
     except HTTPException:
         # RPC may not exist yet — show empty state with hint to run migrations
         summary = []
 
-    total_leads = await supabase_get(
+    total_leads = await _admin_supabase_get(
         "landing_leads",
         params={"select": "id", "order": "created_at.desc"},
-        range_header="0-9999",
     )
-    recent_events = await supabase_get(
+    recent_events = await _admin_supabase_get(
         "landing_events",
         params={"select": "created_at,variant,event_type,modelo,wa_phone,utm_source,utm_campaign",
                 "order": "created_at.desc"},

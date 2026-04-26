@@ -83,3 +83,41 @@ returns table (
     group by e.variant
     order by e.variant;
 $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Row Level Security
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Threat model: in this app the anon key is held by the FastAPI server only;
+-- the browser does NOT call Supabase directly (everything goes through /api/*).
+-- We still enable RLS so that:
+--   * if the anon key ever leaks, a stranger can write garbage events/leads
+--     but cannot READ existing leads or events;
+--   * the admin dashboard reads via SUPABASE_SERVICE_KEY (set in env) which
+--     bypasses RLS, so admin queries continue to work.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+alter table landing_events enable row level security;
+alter table landing_leads  enable row level security;
+alter table landing_carts  enable row level security;
+
+-- Drop existing policies if re-running this script.
+drop policy if exists "anon_insert_events"  on landing_events;
+drop policy if exists "anon_insert_leads"   on landing_leads;
+drop policy if exists "anon_carts_rw"       on landing_carts;
+
+-- anon (public): INSERT only into events + leads. No SELECT — leaks of email /
+-- WhatsApp / clickstream are the actual sensitive risk here.
+create policy "anon_insert_events" on landing_events
+    for insert to anon with check (true);
+
+create policy "anon_insert_leads"  on landing_leads
+    for insert to anon with check (true);
+
+-- anon: full access on landing_carts (session-scoped data, low risk; allows the
+-- future server-side cart endpoint to read/write without service-role).
+create policy "anon_carts_rw" on landing_carts
+    for all to anon using (true) with check (true);
+
+-- service_role bypasses RLS automatically — admin dashboard SELECTs work via
+-- SUPABASE_SERVICE_KEY in the FastAPI env (added separately to .env).
+
