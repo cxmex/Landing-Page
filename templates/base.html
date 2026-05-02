@@ -17,6 +17,21 @@
     <meta property="og:locale" content="es_MX">
     <meta name="twitter:card" content="summary_large_image">
 
+    {% if meta_pixel_id %}
+    <!-- Meta Pixel — only rendered when META_PIXEL_ID is set in env. -->
+    <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+    (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '{{ meta_pixel_id }}');
+    fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id={{ meta_pixel_id }}&ev=PageView&noscript=1"/></noscript>
+    {% endif %}
+
     <!-- Inter as a Helvetica-Neue substitute (free webfont) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -985,6 +1000,20 @@
     }
 
     // ── Tracking ──────────────────────────────────────────────────────────
+    // Map our internal event_types → standard Meta Pixel events. Only the
+    // names Meta natively understands (Lead/Contact/AddToCart/Search) get
+    // sent as 'track'; everything else uses trackCustom so it's still
+    // available for retargeting audiences. fbq is undefined when the Pixel
+    // env var isn't set — guarded below.
+    const FBQ_EVENT_MAP = {
+        lead_submit:     ['track', 'Lead'],
+        whatsapp_click:  ['track', 'Contact'],
+        add_to_cart:     ['track', 'AddToCart'],
+        search:          ['track', 'Search'],
+        chat_open:       ['trackCustom', 'ChatOpen'],
+        bounce:          ['trackCustom', 'Bounce'],
+        chat:            ['trackCustom', 'ChatMessage'],
+    };
     function trackEvent(event_type, data) {
         const payload = Object.assign({event_type}, data || {});
         try {
@@ -992,6 +1021,10 @@
             if (navigator.sendBeacon) navigator.sendBeacon('/api/track', blob);
             else fetch('/api/track', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload), keepalive: true});
         } catch (e) { console.warn('track failed', e); }
+        if (typeof fbq === 'function' && FBQ_EVENT_MAP[event_type]) {
+            const [fn, name] = FBQ_EVENT_MAP[event_type];
+            try { fbq(fn, name, data || {}); } catch (e) { /* swallow */ }
+        }
     }
 
     // ── Cart ──────────────────────────────────────────────────────────────

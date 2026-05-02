@@ -39,6 +39,10 @@ BUSINESS_PHONE = os.environ.get("BUSINESS_PHONE", "525545174085")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "")  # for OG tags; e.g. https://landing.terex.mx
+# Meta Pixel ID — set this in Railway env to start firing FB Pixel events.
+# Empty = snippet not rendered (no-op). Get the value from Meta Business
+# Settings → Datasets & pixels → your pixel's ID.
+META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "")
 
 if not SUPABASE_KEY:
     raise RuntimeError(
@@ -378,6 +382,7 @@ def shared_template_ctx(request: Request, **extra) -> dict:
         "wa_default_msg": WHATSAPP_DEFAULT_MESSAGE,
         "business_phone": BUSINESS_PHONE,
         "public_url": PUBLIC_URL or str(request.base_url).rstrip("/"),
+        "meta_pixel_id": META_PIXEL_ID,
         **extra,
     }
 
