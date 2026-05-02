@@ -49,8 +49,8 @@ with
                on upper(trim(c.color)) = upper(trim(b.color))
     ),
     -- Pick the image that matches the (estilo, color) where possible, else any
-    -- image for that estilo. display_order asc puts the user-marked primary
-    -- first (see migrations_image_order.sql in the inventory app).
+    -- image for that estilo. Most recent upload wins. (When the inventory app's
+    -- migrations_image_order.sql is applied, swap to ordering by display_order.)
     with_image as (
         select
             wi.*,
@@ -59,12 +59,12 @@ with
                    from image_uploads iu
                   where iu.estilo_id = wi.estilo_id
                     and iu.color_id  = wi.color_id
-                  order by coalesce(iu.display_order, 100) asc, iu.created_at desc
+                  order by iu.created_at desc
                   limit 1),
                 (select iu.public_url
                    from image_uploads iu
                   where iu.estilo_id = wi.estilo_id
-                  order by coalesce(iu.display_order, 100) asc, iu.created_at desc
+                  order by iu.created_at desc
                   limit 1)
             ) as image_url
         from with_ids wi
