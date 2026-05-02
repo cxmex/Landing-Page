@@ -13,6 +13,7 @@ import asyncio
 from typing import Optional
 
 import httpx
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, HTTPException, Form, Depends, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
@@ -201,6 +202,24 @@ def slugify(text: str) -> str:
     return s.strip("-")
 
 
+# Public image proxy: resizes to display dimensions and re-encodes to WebP.
+# Source images on Supabase Storage are full-resolution JPEGs with cache-control:
+# no-cache (every request goes back to origin). Proxying through wsrv.nl gives us
+# WebP at the requested width and a 1-year edge cache header. Free, no signup.
+# Set IMAGE_PROXY_BASE='' in env to disable (templates fall back to image_url).
+IMAGE_PROXY_BASE = os.environ.get(
+    "IMAGE_PROXY_BASE",
+    "https://wsrv.nl/?url={url}&w={w}&output=webp&q=75&we",
+)
+
+
+def image_proxy_url(original: str, width: int = 400) -> str:
+    """Wrap a public image URL in the configured proxy. Empty in → empty out."""
+    if not original or not IMAGE_PROXY_BASE:
+        return original or ""
+    return IMAGE_PROXY_BASE.format(url=quote_plus(original), w=width)
+
+
 _bestsellers_cache: dict = {"data": None, "ts": 0, "key": None}
 _bestsellers_lock = asyncio.Lock()
 
@@ -248,6 +267,9 @@ async def fetch_bestsellers(limit: int = 12, days: int = 30):
         except Exception as e:
             print(f"[fetch_bestsellers] {type(e).__name__}: {e}")
             return []
+
+        for r in data:
+            r["image_url_thumb"] = image_proxy_url(r.get("image_url", ""), width=400)
 
         _bestsellers_cache["data"] = data
         _bestsellers_cache["ts"] = time.time()
@@ -341,6 +363,7 @@ async def fetch_products_for_modelo(modelo: str, days: int = 30):
             "avg_daily": round(avg_daily, 1),
             "doi": doi,
             "image_url": image_url,
+            "image_url_thumb": image_proxy_url(image_url, width=400),
             "has_image": bool(image_url),
         })
 

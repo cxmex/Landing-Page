@@ -846,6 +846,15 @@
     const WA_NUMBER = "{{ wa_number }}";
     const WA_DEFAULT_MSG = {{ wa_default_msg|tojson }};
 
+    // ── Image proxy ───────────────────────────────────────────────────────
+    // Mirrors image_proxy_url() in app.py — used for client-side image URLs
+    // (cart drawer thumbs read from localStorage, which only stores the original).
+    // Server-rendered images already get image_url_thumb from the API.
+    function thumb(url, w) {
+        if (!url) return '';
+        return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=${w||400}&output=webp&q=75&we`;
+    }
+
     // ── Tracking ──────────────────────────────────────────────────────────
     function trackEvent(event_type, data) {
         const payload = Object.assign({event_type}, data || {});
@@ -920,7 +929,7 @@
         }
         wrap.innerHTML = cart.map((c, i) => `
             <div class="cart-item">
-                ${c.image_url ? `<img src="${c.image_url}">` : '<div style="width:72px;height:72px;background:var(--soft);border-radius:8px;"></div>'}
+                ${c.image_url ? `<img src="${thumb(c.image_url, 144)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${c.image_url}';">` : '<div style="width:72px;height:72px;background:var(--soft);border-radius:8px;"></div>'}
                 <div class="info">
                     <h6>${c.estilo || 'Estilo'}</h6>
                     <div class="meta">${c.modelo || ''} · ${c.color || ''}</div>
@@ -1115,7 +1124,7 @@
                 <div class="bs-card">
                     <div class="bs-img" onclick="showImage('${p.image_url}')">
                         ${idx < 3 ? `<span class="bs-badge">Top ${idx+1}</span>` : ''}
-                        <img src="${p.image_url}" loading="lazy" alt="${p.estilo}">
+                        <img src="${p.image_url_thumb || p.image_url}" loading="lazy" decoding="async" alt="${p.estilo}" onerror="this.onerror=null;this.src='${p.image_url}';">
                     </div>
                     <div class="bs-info">
                         <h6>${p.estilo}</h6>

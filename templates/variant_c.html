@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return `
             <div class="pcard">
                 <div class="img" ${p.image_url ? `onclick="showImage('${p.image_url}')"` : ''}>
-                    ${p.image_url ? `<img src="${p.image_url}" loading="lazy">` : '<div class="ph"><i class="bi bi-phone"></i></div>'}
+                    ${p.image_url ? `<img src="${p.image_url_thumb || p.image_url}" loading="lazy" decoding="async" alt="${p.estilo}" onerror="this.onerror=null;this.src='${p.image_url}';">` : '<div class="ph"><i class="bi bi-phone"></i></div>'}
                 </div>
                 <div class="body">
                     <h6>${p.estilo}</h6>
