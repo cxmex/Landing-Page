@@ -14,7 +14,7 @@ from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, HTTPException, Form, Depends
+from fastapi import FastAPI, Request, HTTPException, Form, Depends, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -207,9 +207,17 @@ _bestsellers_lock = asyncio.Lock()
 
 async def fetch_bestsellers(limit: int = 12, days: int = 30):
     """Top-selling estilo+color products across all modelos, with images.
-    Cold-load content for landing pages — cached because every anon visitor
-    sees the same list."""
-    cache_key = (limit, days)
+
+    Reads the `landing_bestsellers` materialized view (see
+    migrations_bestsellers_mv.sql), which is refreshed by pg_cron every 30 min.
+    Single indexed SELECT — typically <50ms. Falls back to [] on error so a
+    Supabase outage never breaks the landing page.
+
+    `days` is ignored at runtime (the MV is built with a fixed window); it stays
+    in the signature so callers don't break. To change the window, re-deploy
+    the MV with the new constant.
+    """
+    cache_key = (limit,)
     now = time.time()
     if (_bestsellers_cache["data"] is not None
             and _bestsellers_cache["key"] == cache_key
@@ -222,92 +230,29 @@ async def fetch_bestsellers(limit: int = 12, days: int = 30):
                 and (time.time() - _bestsellers_cache["ts"]) < BESTSELLERS_CACHE_TTL):
             return _bestsellers_cache["data"]
 
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp_analysis, resp_images, resp_estilos, resp_colors = await asyncio.gather(
-                client.get(
-                    f"{SUPABASE_URL}/rest/v1/rpc/get_order_analysis",
-                    headers={**HEADERS, "Range": "0-9999"},
-                    params={"days_back": days},
-                ),
-                client.get(
-                    f"{SUPABASE_URL}/rest/v1/image_uploads",
-                    headers={**HEADERS, "Range": "0-9999"},
-                    params={"select": "estilo_id,color_id,public_url"},
-                ),
-                client.get(
-                    f"{SUPABASE_URL}/rest/v1/inventario_estilos",
-                    headers={**HEADERS, "Range": "0-9999"},
-                    params={"select": "id,nombre"},
-                ),
-                client.get(
-                    f"{SUPABASE_URL}/rest/v1/inventario_colores",
-                    headers={**HEADERS, "Range": "0-9999"},
-                    params={"select": "id,color"},
-                ),
-            )
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/landing_bestsellers",
+                    headers=HEADERS,
+                    params={
+                        "select": "estilo,color,modelo,stock,sold,image_url",
+                        "order": "sold.desc",
+                        "limit": str(limit),
+                    },
+                )
+            if resp.status_code >= 400:
+                print(f"[fetch_bestsellers] {resp.status_code} {resp.text[:200]}")
+                return []
+            data = resp.json() or []
+        except Exception as e:
+            print(f"[fetch_bestsellers] {type(e).__name__}: {e}")
+            return []
 
-        if resp_analysis.status_code >= 400:
-            raise HTTPException(status_code=502, detail=f"RPC error: {resp_analysis.text}")
-
-        all_rows = resp_analysis.json()
-        estilo_id_map = {
-            e["nombre"]: e["id"]
-            for e in (resp_estilos.json() if resp_estilos.status_code < 400 else [])
-        }
-        images_by_estilo: dict[int, dict[int, str]] = {}
-        if resp_images.status_code < 400:
-            for img in resp_images.json():
-                eid, cid, url = img.get("estilo_id"), img.get("color_id"), img.get("public_url", "")
-                if eid and url:
-                    images_by_estilo.setdefault(eid, {}).setdefault(cid, url)
-        color_name_to_id = {
-            c["color"].strip().upper(): c["id"]
-            for c in (resp_colors.json() if resp_colors.status_code < 400 else [])
-        }
-
-        candidates = []
-        for r in all_rows:
-            sold = int(float(r.get("sold_total", 0) or 0))
-            stock = int(float(r.get("stock_total", 0) or 0))
-            if sold <= 0 or stock <= 0:
-                continue  # only show in-stock products that actually sold
-            est = r.get("estilo", "") or "Sin estilo"
-            color = r.get("color", "") or "Sin color"
-            modelo = r.get("modelo", "") or ""
-            eid = estilo_id_map.get(est)
-            cid = color_name_to_id.get(color.strip().upper())
-            image_url = ""
-            if eid and cid and eid in images_by_estilo:
-                image_url = images_by_estilo[eid].get(cid, "")
-            if not image_url and eid and eid in images_by_estilo:
-                image_url = next(iter(images_by_estilo[eid].values()), "")
-            if not image_url:
-                continue  # bestsellers must have images
-            candidates.append({
-                "estilo": est,
-                "color": color,
-                "modelo": modelo,
-                "stock": stock,
-                "sold": sold,
-                "image_url": image_url,
-            })
-
-        candidates.sort(key=lambda p: -p["sold"])
-        # Dedupe by estilo — one card per style for visual variety on the grid.
-        seen = set()
-        deduped = []
-        for p in candidates:
-            if p["estilo"] in seen:
-                continue
-            seen.add(p["estilo"])
-            deduped.append(p)
-            if len(deduped) >= limit:
-                break
-
-        _bestsellers_cache["data"] = deduped
+        _bestsellers_cache["data"] = data
         _bestsellers_cache["ts"] = time.time()
         _bestsellers_cache["key"] = cache_key
-        return deduped
+        return data
 
 
 async def fetch_products_for_modelo(modelo: str, days: int = 30):
@@ -433,7 +378,7 @@ async def root(request: Request, v: Optional[str] = None):
 
 
 @app.get("/v/{variant}", response_class=HTMLResponse)
-async def variant_page(request: Request, variant: str):
+async def variant_page(request: Request, variant: str, background_tasks: BackgroundTasks):
     variant = variant.upper()
     if variant not in VARIANTS:
         raise HTTPException(status_code=404, detail="Unknown variant")
@@ -441,7 +386,7 @@ async def variant_page(request: Request, variant: str):
     session_id = get_or_create_session_id(request)
     modelos = await fetch_modelos()
 
-    await log_event(request, session_id, variant, "pageview")
+    background_tasks.add_task(log_event, request, session_id, variant, "pageview")
 
     response = templates.TemplateResponse(
         request=request,
@@ -488,11 +433,11 @@ async def phone_model_deep_link(request: Request, slug: str):
 
 
 @app.get("/mayoreo", response_class=HTMLResponse)
-async def mayoreo_page(request: Request):
+async def mayoreo_page(request: Request, background_tasks: BackgroundTasks):
     """Dedicated wholesale lead-capture page. Variant-independent — useful for
     targeted ads aimed at resellers / business buyers."""
     session_id = get_or_create_session_id(request)
-    await log_event(request, session_id, None, "pageview", metadata={"page": "mayoreo"})
+    background_tasks.add_task(log_event, request, session_id, None, "pageview", metadata={"page": "mayoreo"})
     response = templates.TemplateResponse(
         request=request,
         name="mayoreo.html",
@@ -507,11 +452,11 @@ async def mayoreo_page(request: Request):
 # ──────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/products")
-async def api_products(request: Request, modelo: str, days: int = 30):
+async def api_products(request: Request, background_tasks: BackgroundTasks, modelo: str, days: int = 30):
     products = await fetch_products_for_modelo(modelo, days)
     session_id = get_or_create_session_id(request)
     variant = request.cookies.get(VARIANT_COOKIE)
-    await log_event(request, session_id, variant, "search", modelo=modelo, metadata={"result_count": len(products)})
+    background_tasks.add_task(log_event, request, session_id, variant, "search", modelo=modelo, metadata={"result_count": len(products)})
     return JSONResponse({"products": products, "modelo": modelo, "count": len(products)})
 
 
@@ -522,7 +467,7 @@ async def api_bestsellers(limit: int = 12, days: int = 30):
 
 
 @app.post("/api/track")
-async def api_track(request: Request):
+async def api_track(request: Request, background_tasks: BackgroundTasks):
     """Generic event ingestion from the client (clicks, cart adds, WhatsApp clicks)."""
     body = await request.json()
     session_id = get_or_create_session_id(request)
@@ -535,7 +480,8 @@ async def api_track(request: Request):
     if event_type not in allowed:
         raise HTTPException(status_code=400, detail=f"Unknown event_type: {event_type}")
 
-    await log_event(
+    background_tasks.add_task(
+        log_event,
         request, session_id, variant, event_type,
         modelo=body.get("modelo"),
         estilo=body.get("estilo"),
@@ -584,6 +530,7 @@ async def api_cart_save(request: Request):
 @app.post("/api/lead")
 async def api_lead(
     request: Request,
+    background_tasks: BackgroundTasks,
     email: Optional[str] = Form(None),
     phone: Optional[str] = Form(None),
     name: Optional[str] = Form(None),
@@ -608,7 +555,7 @@ async def api_lead(
         "metadata": {"notes": notes} if notes else None,
     }
     await supabase_post("landing_leads", [payload])
-    await log_event(request, session_id, variant, "lead_submit", metadata={"source": source})
+    background_tasks.add_task(log_event, request, session_id, variant, "lead_submit", metadata={"source": source})
     return {"ok": True}
 
 
