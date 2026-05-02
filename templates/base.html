@@ -405,6 +405,18 @@
             margin-bottom: 12px;
         }
         .modal-x input[type="email"]:focus { outline: none; border-color: var(--ink); }
+        /* Retail/wholesale toggle inside the bounce modal */
+        .ctype-toggle { display: flex; gap: 8px; margin: 4px 0 6px; }
+        .ctype-toggle button {
+            flex: 1; padding: 10px 8px; border: 1px solid var(--line);
+            border-radius: 8px; background: var(--paper); color: var(--muted);
+            font-family: inherit; font-size: .82rem; font-weight: 600;
+            cursor: pointer; transition: all .15s;
+        }
+        .ctype-toggle button.on {
+            background: var(--ink); color: var(--paper); border-color: var(--ink);
+        }
+        .ctype-toggle button:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
 
         /* ── Image lightbox ─────────────────────────────────────────────── */
         .lightbox-backdrop {
@@ -799,6 +811,12 @@
         <h3 style="text-align:center;font-size:1.4rem;letter-spacing:-.01em;margin:8px 0 6px;">No te vayas con las manos vacias</h3>
         <p style="text-align:center;">Dejanos tu WhatsApp o correo y te avisamos cuando llegue tu modelo o haya promociones para suscriptores.</p>
         <form id="leadForm" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:.78rem;color:var(--muted);text-align:center;margin:2px 0 -2px;">Es para</div>
+            <div class="ctype-toggle" role="radiogroup" aria-label="Tipo de comprador">
+                <button type="button" class="on" data-ctype="retail"   role="radio" aria-checked="true">Para mi</button>
+                <button type="button"            data-ctype="wholesale" role="radio" aria-checked="false">Para mi tienda</button>
+            </div>
+            <input type="hidden" name="customer_type" id="leadCtype" value="retail">
             <input type="tel" name="phone" placeholder="WhatsApp (recomendado)" inputmode="tel" autocomplete="tel"
                    style="border:1px solid var(--line);border-radius:8px;padding:14px 16px;font-size:.95rem;font-family:inherit;outline:none;">
             <div style="text-align:center;color:var(--muted);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;">o</div>
@@ -936,6 +954,19 @@
     });
 
     // ── Lead form (bounce / discount capture) ────────────────────────────
+    // Retail/wholesale toggle — keeps a hidden input in sync with the active pill.
+    document.querySelectorAll('.ctype-toggle button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.ctype-toggle button').forEach(b => {
+                b.classList.remove('on');
+                b.setAttribute('aria-checked', 'false');
+            });
+            btn.classList.add('on');
+            btn.setAttribute('aria-checked', 'true');
+            document.getElementById('leadCtype').value = btn.dataset.ctype;
+        });
+    });
+
     document.getElementById('leadForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const fd = new FormData(this);
@@ -949,14 +980,19 @@
             const ok = document.getElementById('leadOk');
             ok.style.display = 'block';
             // Optional WhatsApp follow-up — pre-fill with cart contents if any.
+            // Wholesale leads get a distinct opener so the human on the other end
+            // knows to send the mayoreo price sheet, not retail cards.
+            const ctype = fd.get('customer_type') || 'retail';
             const cart = readCart();
             const cartLines = cart.length
                 ? '\n\nTengo en mi seleccion:\n' + cart.map(c => `- ${c.estilo} ${c.color} (${c.modelo||''}) x${c.qty}`).join('\n')
                 : '';
-            const msg = `Hola, deje mis datos en la pagina y me interesa una funda.${cartLines}`;
+            const msg = ctype === 'wholesale'
+                ? `Hola, deje mis datos en la pagina y busco precios de MAYOREO para mi tienda.${cartLines}`
+                : `Hola, deje mis datos en la pagina y me interesa una funda.${cartLines}`;
             document.getElementById('leadWaBtn').href =
                 `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
-            trackEvent('lead_submit', {source: document.getElementById('leadSource').value});
+            trackEvent('lead_submit', {source: document.getElementById('leadSource').value, customer_type: ctype});
             // Mark this session as captured so we don't re-trigger the modal
             try { localStorage.setItem('lp_captured', '1'); } catch(_) {}
         }
