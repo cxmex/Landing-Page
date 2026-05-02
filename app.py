@@ -10,6 +10,7 @@ import re
 import time
 import secrets
 import asyncio
+import unicodedata
 from typing import Optional
 
 import httpx
@@ -620,6 +621,245 @@ async def api_cart_save(request: Request):
     if resp.status_code >= 400:
         print(f"[api_cart] {resp.status_code} {resp.text}")
     return {"ok": True, "session_id": session_id}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Chat / inventory RAG (browser widget today, WhatsApp webhook later)
+# ──────────────────────────────────────────────────────────────────────────────
+# Rule-based intent detection over Spanish messages. The same response shape is
+# returned to /api/chat (browser) and will be returned to a future /whatsapp/webhook
+# (Meta Cloud API) — only the transport changes. When an Anthropic key is added,
+# swap the rule-based brain for Claude without touching the webhook glue.
+
+GREETINGS = {"hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",
+             "que tal", "hi", "hello", "hey", "que onda"}
+WHOLESALE_TERMS = ("mayoreo", "mayorista", "al mayor", "wholesale", "reventa",
+                   "para revender", "tengo una tienda", "para mi tienda", "soy tienda")
+PRICE_TERMS = ("precio", "precios", "cuanto cuesta", "cuanto vale", "cuanto valen",
+               "costo", "cuesta", "valen", "cuanto sale")
+
+# Brand aliases → canonical key. Samsung is stored in inventory as "S24 ULTRA"
+# (no SAMSUNG prefix), so the matcher synthesizes "s<number>" tokens when brand=samsung.
+BRAND_ALIASES = {
+    "iphone":   ["iphone", "ifone", "i phone", "aifon", "ifono", "iphono"],
+    "samsung":  ["samsung", "samsun", "sansung", "galaxy"],
+    "xiaomi":   ["xiaomi", "shaomi", "redmi", "mi"],
+    "motorola": ["motorola", "moto"],
+    "huawei":   ["huawei", "wawei"],
+    "honor":    ["honor"],
+}
+
+COLOR_ALIASES = {
+    "negro":      ["negro", "black"],
+    "blanco":     ["blanco", "white"],
+    "azul":       ["azul", "blue"],
+    "rojo":       ["rojo", "red"],
+    "verde":      ["verde", "green"],
+    "amarillo":   ["amarillo", "yellow"],
+    "naranja":    ["naranja", "orange"],
+    "rosa":       ["rosa", "pink", "rosado"],
+    "morado":     ["morado", "purple", "lila", "violeta"],
+    "dorado":     ["dorado", "gold"],
+    "plata":      ["plata", "plateado", "silver"],
+    "gris":       ["gris", "gray", "grey"],
+    "transparente": ["transparente", "translucido", "clear"],
+    "multicolor": ["multicolor"],
+}
+
+
+def _norm_text(s: str) -> str:
+    """Lowercase + strip diacritics + collapse whitespace. Spanish-friendly."""
+    if not s:
+        return ""
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"\s+", " ", s.strip().lower())
+
+
+def _extract_brand(msg_norm: str) -> Optional[str]:
+    for canonical, aliases in BRAND_ALIASES.items():
+        for a in aliases:
+            if re.search(rf"\b{re.escape(a)}\b", msg_norm):
+                return canonical
+    return None
+
+
+def _extract_color(msg_norm: str) -> Optional[str]:
+    for canonical, aliases in COLOR_ALIASES.items():
+        for a in aliases:
+            if re.search(rf"\b{re.escape(a)}\b", msg_norm):
+                return canonical
+    return None
+
+
+def _detect_intent(msg_norm: str) -> str:
+    if not msg_norm:
+        return "fallback"
+    # Greeting must be short — "hola, busco funda iphone 15" is product_search.
+    if any(g == msg_norm for g in GREETINGS) or any(
+            msg_norm.startswith(g + " ") and len(msg_norm.split()) <= 3 for g in GREETINGS):
+        return "greeting"
+    if any(t in msg_norm for t in WHOLESALE_TERMS):
+        return "wholesale"
+    if _extract_brand(msg_norm) or re.search(r"\b\d{1,3}\b", msg_norm):
+        return "product_search"
+    if any(t in msg_norm for t in PRICE_TERMS):
+        return "price"
+    return "fallback"
+
+
+def _match_modelo(msg_norm: str, modelos: list) -> Optional[dict]:
+    """Score every catalog modelo by token overlap with the user message.
+    Numbers and 's<n>'-style tokens count double — they're the most discriminating."""
+    msg_tokens = set(msg_norm.split())
+    brand = _extract_brand(msg_norm)
+    if brand == "samsung":
+        for n in re.findall(r"\d{1,3}", msg_norm):
+            msg_tokens.add(f"s{n}")
+    elif brand == "xiaomi":
+        msg_tokens.add("mi")
+
+    best, best_score = None, 0
+    for m in modelos:
+        modelo_tokens = set(_norm_text(m["modelo"]).split())
+        overlap = msg_tokens & modelo_tokens
+        if not overlap:
+            continue
+        score = len(overlap) + sum(
+            1 for t in overlap if t.isdigit() or re.match(r"^[a-z]\d+$", t)
+        )
+        if score > best_score:
+            best, best_score = m, score
+    # Threshold of 2 means at least a brand-token + a number, OR an exact match.
+    return best if best_score >= 2 else None
+
+
+def _wa_link(text: str) -> str:
+    from urllib.parse import quote
+    return f"https://wa.me/{WHATSAPP_NUMBER}?text={quote(text)}"
+
+
+async def route_chat_message(message: str, session_id: str, variant: Optional[str]) -> dict:
+    """Single entrypoint shared by /api/chat (browser widget) and the future
+    WhatsApp webhook. Returns a transport-agnostic dict with reply_text (works
+    as a WhatsApp message verbatim), structured products, and action buttons."""
+    msg_norm = _norm_text(message)
+    intent = _detect_intent(msg_norm)
+
+    if intent == "greeting":
+        return {
+            "intent": "greeting",
+            "reply_text": "Hola! Soy MATCH. Dime el modelo de tu telefono y te muestro las fundas en stock. Ej: iphone 15, samsung s24, mi 15t.",
+            "products": [],
+            "actions": [
+                {"type": "deep_link", "url": "/", "label": "Ver catalogo"},
+                {"type": "deep_link", "url": "/mayoreo", "label": "Soy tienda"},
+            ],
+        }
+
+    if intent == "wholesale":
+        return {
+            "intent": "wholesale",
+            "reply_text": "Manejo precios de mayoreo desde 12 piezas. Pasate a /mayoreo o dejame tu WhatsApp y te paso la lista de precios completa.",
+            "products": [],
+            "actions": [
+                {"type": "deep_link", "url": "/mayoreo", "label": "Ver precios mayoreo"},
+                {"type": "whatsapp", "url": _wa_link("Hola, tengo una tienda y quiero la lista de precios de mayoreo"), "label": "Hablar con un humano"},
+            ],
+        }
+
+    if intent == "price":
+        return {
+            "intent": "price",
+            "reply_text": "Los precios dependen del estilo. Dime tu modelo (ej: iphone 15) y te paso opciones con precio. Si tienes tienda, manejo mayoreo desde 12 piezas en /mayoreo.",
+            "products": [],
+            "actions": [
+                {"type": "deep_link", "url": "/mayoreo", "label": "Precios mayoreo"},
+            ],
+        }
+
+    if intent == "product_search":
+        modelos = await fetch_modelos()
+        match = _match_modelo(msg_norm, modelos)
+        if not match:
+            return {
+                "intent": "product_search_no_match",
+                "reply_text": "No encontre ese modelo en mi catalogo. Pruebalo asi: 'iphone 15 pro max', 'samsung s24 ultra', 'mi 15t'. O escribe 'mayoreo' si tienes tienda.",
+                "products": [],
+                "actions": [
+                    {"type": "deep_link", "url": "/", "label": "Ver todo el catalogo"},
+                ],
+            }
+        products = await fetch_products_for_modelo(match["modelo"])
+        color = _extract_color(msg_norm)
+        if color:
+            color_norm = _norm_text(color)
+            products = [p for p in products if color_norm in _norm_text(p.get("color", ""))]
+        in_stock = [p for p in products if int(p.get("stock", 0) or 0) > 0 and p.get("image_url")]
+        slug = slugify(match["modelo"])
+        what_color = f" en color {color}" if color else ""
+        if not in_stock:
+            return {
+                "intent": "product_search_out_of_stock",
+                "matched_modelo": match["modelo"],
+                "matched_color": color,
+                "reply_text": f"Si manejo {match['modelo']}{what_color} pero ahorita no tengo stock. Dejame tu WhatsApp y te aviso cuando llegue.",
+                "products": [],
+                "actions": [
+                    {"type": "whatsapp", "url": _wa_link(f"Quiero que me avisen cuando lleguen fundas para {match['modelo']}{what_color}"), "label": "Avisame cuando llegue"},
+                ],
+            }
+        top = in_stock[:4]
+        plural = "estilos" if len(in_stock) != 1 else "estilo"
+        reply = (
+            f"Si, tengo {len(in_stock)} {plural} de funda para {match['modelo']}{what_color} en stock. "
+            f"Aqui los mas vendidos:"
+        )
+        return {
+            "intent": "product_search",
+            "matched_modelo": match["modelo"],
+            "matched_color": color,
+            "reply_text": reply,
+            "products": top,  # keys: estilo, color, stock, image_url, image_url_thumb
+            "actions": [
+                {"type": "deep_link", "url": f"/p/{slug}", "label": f"Ver todos para {match['modelo']}"},
+                {"type": "whatsapp", "url": _wa_link(f"Quiero pedir funda para {match['modelo']}{what_color}"), "label": "Pedir por WhatsApp"},
+            ],
+        }
+
+    return {
+        "intent": "fallback",
+        "reply_text": "Te escucho. Dime el modelo de tu telefono (ej: iphone 15, samsung s24, mi 15t) y te muestro las fundas. Para mayoreo escribe 'mayoreo'.",
+        "products": [],
+        "actions": [
+            {"type": "deep_link", "url": "/", "label": "Ver catalogo"},
+            {"type": "whatsapp", "url": _wa_link("Hola, tengo una pregunta"), "label": "Hablar con un humano"},
+        ],
+    }
+
+
+@app.post("/api/chat")
+async def api_chat(request: Request, background_tasks: BackgroundTasks):
+    """Browser-side chat endpoint. The future WhatsApp webhook will call
+    route_chat_message() directly with the same shape, so the brain is shared."""
+    body = await request.json()
+    message = (body.get("message") or "").strip()[:500]
+    if not message:
+        raise HTTPException(400, "message required")
+    session_id = get_or_create_session_id(request)
+    variant = request.cookies.get(VARIANT_COOKIE)
+    response_data = await route_chat_message(message, session_id, variant)
+    background_tasks.add_task(
+        log_event, request, session_id, variant, "chat",
+        metadata={
+            "message": message,
+            "intent": response_data.get("intent"),
+            "matched_modelo": response_data.get("matched_modelo"),
+            "matched_color": response_data.get("matched_color"),
+            "product_count": len(response_data.get("products", [])),
+        },
+    )
+    return JSONResponse(response_data)
 
 
 @app.post("/api/lead")
