@@ -845,6 +845,11 @@
     const VARIANT = "{{ variant|default('') }}";
     const WA_NUMBER = "{{ wa_number }}";
     const WA_DEFAULT_MSG = {{ wa_default_msg|tojson }};
+    // What the server already knows about this session from prior visits
+    // (lead form submissions persist email/phone onto landing_carts). Used to
+    // pre-fill the lead form inputs and skip the bounce modal entirely if
+    // we already have everything.
+    const KNOWN_IDENTITY = {{ (known_identity or {})|tojson }};
 
     // ── Image proxy ───────────────────────────────────────────────────────
     // Mirrors image_proxy_url() in app.py — used for client-side image URLs
@@ -1027,6 +1032,30 @@
 
     // ── Bounce / capture modal ────────────────────────────────────────────
     let bounceShown = false;
+    // If the server already knows BOTH email and phone for this session, treat
+    // it as captured so the bounce modal stays out of the way (and re-sync
+    // the localStorage flag in case it was cleared).
+    if (KNOWN_IDENTITY && KNOWN_IDENTITY.email && KNOWN_IDENTITY.phone) {
+        try { localStorage.setItem('lp_captured', '1'); } catch(_) {}
+    }
+    // Pre-fill anything we already know into the lead form + cart-save form.
+    // Only fill empty inputs so a user mid-typing isn't overwritten.
+    (function prefillKnownIdentity() {
+        if (!KNOWN_IDENTITY) return;
+        const setIfEmpty = (sel, val) => {
+            if (!val) return;
+            const el = document.querySelector(sel);
+            if (el && !el.value) el.value = val;
+        };
+        setIfEmpty('#leadForm input[name="phone"]', KNOWN_IDENTITY.phone);
+        setIfEmpty('#leadForm input[name="email"]', KNOWN_IDENTITY.email);
+        setIfEmpty('#cartSaveForm input[name="phone"]', KNOWN_IDENTITY.phone);
+        // Also reflect the customer_type on the toggle if we know it.
+        if (KNOWN_IDENTITY.customer_type === 'wholesale') {
+            const w = document.querySelector('.ctype-toggle button[data-ctype="wholesale"]');
+            if (w) w.click();
+        }
+    })();
     function alreadyCaptured() {
         try { return localStorage.getItem('lp_captured') === '1'; } catch { return false; }
     }

@@ -381,6 +381,72 @@ def shared_template_ctx(request: Request, **extra) -> dict:
     }
 
 
+async def fetch_session_identity(session_id: str) -> dict:
+    """Look up what we already know about this session from landing_carts.
+
+    Used so the bounce modal can pre-fill known email/phone and skip showing
+    itself when we already have both. Returns {} on any error or empty result —
+    this is decoration, never block the page render on it.
+    """
+    if not session_id:
+        return {}
+    try:
+        async with httpx.AsyncClient(timeout=4) as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/rest/v1/landing_carts",
+                headers=HEADERS,
+                params={
+                    "select": "email,wa_phone,customer_type,items",
+                    "session_id": f"eq.{session_id}",
+                    "limit": "1",
+                },
+            )
+        if resp.status_code >= 400 or not resp.json():
+            return {}
+        row = resp.json()[0]
+        items = row.get("items") or []
+        return {
+            "email": row.get("email") or "",
+            "phone": row.get("wa_phone") or "",
+            "customer_type": row.get("customer_type") or "",
+            "has_cart_items": bool(items),
+        }
+    except Exception as e:
+        print(f"[fetch_session_identity] {type(e).__name__}: {e}")
+        return {}
+
+
+async def upsert_cart_identity(
+    session_id: str,
+    email: Optional[str] = None,
+    phone: Optional[str] = None,
+    customer_type: Optional[str] = None,
+    variant: Optional[str] = None,
+) -> None:
+    """Persist captured identity onto landing_carts so the cart row carries it
+    across visits. Only sends columns that have values, so existing items[] /
+    status are not blanked out by a lead-side write."""
+    payload: dict = {"session_id": session_id}
+    if email:         payload["email"] = email
+    if phone:         payload["wa_phone"] = phone
+    if customer_type: payload["customer_type"] = customer_type
+    if variant:       payload["variant"] = variant
+    if len(payload) == 1:
+        return  # nothing to write besides the conflict key
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                f"{SUPABASE_URL}/rest/v1/landing_carts",
+                headers={**HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"},
+                params={"on_conflict": "session_id"},
+                json=[payload],
+            )
+        if resp.status_code >= 400:
+            print(f"[upsert_cart_identity] {resp.status_code} {resp.text[:200]}")
+    except Exception as e:
+        print(f"[upsert_cart_identity] {type(e).__name__}: {e}")
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Routes — A/B router
 # ──────────────────────────────────────────────────────────────────────────────
@@ -407,7 +473,11 @@ async def variant_page(request: Request, variant: str, background_tasks: Backgro
         raise HTTPException(status_code=404, detail="Unknown variant")
 
     session_id = get_or_create_session_id(request)
-    modelos = await fetch_modelos()
+    # Run modelos + identity lookup concurrently — both are independent reads.
+    modelos, known_identity = await asyncio.gather(
+        fetch_modelos(),
+        fetch_session_identity(session_id),
+    )
 
     background_tasks.add_task(log_event, request, session_id, variant, "pageview")
 
@@ -419,6 +489,7 @@ async def variant_page(request: Request, variant: str, background_tasks: Backgro
             modelos=modelos,
             variant=variant,
             session_id=session_id,
+            known_identity=known_identity,
         ),
     )
     set_session_cookies(response, session_id, variant)
@@ -460,11 +531,12 @@ async def mayoreo_page(request: Request, background_tasks: BackgroundTasks):
     """Dedicated wholesale lead-capture page. Variant-independent — useful for
     targeted ads aimed at resellers / business buyers."""
     session_id = get_or_create_session_id(request)
+    known_identity = await fetch_session_identity(session_id)
     background_tasks.add_task(log_event, request, session_id, None, "pageview", metadata={"page": "mayoreo"})
     response = templates.TemplateResponse(
         request=request,
         name="mayoreo.html",
-        context=shared_template_ctx(request, session_id=session_id),
+        context=shared_template_ctx(request, session_id=session_id, known_identity=known_identity),
     )
     set_session_cookies(response, session_id)
     return response
@@ -578,6 +650,12 @@ async def api_lead(
         "metadata": {"notes": notes} if notes else None,
     }
     await supabase_post("landing_leads", [payload])
+    # Persist identity on the cart row so this session is recognized on return
+    # visits (cart row holds the identity across pageviews; lead row is the log).
+    background_tasks.add_task(
+        upsert_cart_identity,
+        session_id, email, phone, customer_type or "unknown", variant,
+    )
     background_tasks.add_task(log_event, request, session_id, variant, "lead_submit", metadata={"source": source})
     return {"ok": True}
 
