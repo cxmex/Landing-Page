@@ -446,6 +446,112 @@
         /* ── Hide tel button on small screens (icon already in WA pill) ── */
         @media (max-width: 600px) { .d-none-sm { display: none !important; } }
 
+        /* ── Chat widget (bottom-left) ──────────────────────────────────── */
+        .chat-fab {
+            position: fixed; bottom: 24px; left: 24px; z-index: 250;
+            width: 56px; height: 56px; border-radius: 50%; border: none;
+            background: var(--ink); color: var(--paper); font-size: 1.5rem;
+            box-shadow: 0 6px 18px rgba(0,0,0,.25); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform .15s;
+        }
+        .chat-fab:hover { transform: scale(1.05); }
+        .chat-fab .badge {
+            position: absolute; top: -2px; right: -2px;
+            background: #25d366; color: #fff; border-radius: 999px;
+            width: 18px; height: 18px; font-size: .65rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid var(--paper);
+        }
+        .chat-panel {
+            position: fixed; bottom: 92px; left: 24px; z-index: 251;
+            width: 360px; max-width: calc(100vw - 32px);
+            height: 540px; max-height: calc(100vh - 120px);
+            background: var(--paper); border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0,0,0,.25);
+            display: none; flex-direction: column; overflow: hidden;
+        }
+        .chat-panel.open { display: flex; }
+        .chat-head {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 16px; background: var(--ink); color: var(--paper);
+        }
+        .chat-head .avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--paper); color: var(--ink);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: .85rem;
+        }
+        .chat-head .meta { flex: 1; line-height: 1.1; }
+        .chat-head .meta strong { font-size: .92rem; }
+        .chat-head .meta small { font-size: .68rem; opacity: .8; }
+        .chat-head button {
+            background: none; border: none; color: var(--paper);
+            font-size: 1.1rem; cursor: pointer;
+        }
+        .chat-body {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 10px;
+            background: #fafafa;
+        }
+        .chat-msg {
+            max-width: 85%; padding: 10px 12px; border-radius: 14px;
+            font-size: .88rem; line-height: 1.35; word-wrap: break-word;
+        }
+        .chat-msg.user {
+            align-self: flex-end; background: var(--ink); color: var(--paper);
+            border-bottom-right-radius: 4px;
+        }
+        .chat-msg.bot {
+            align-self: flex-start; background: var(--paper);
+            border: 1px solid var(--line); color: var(--ink);
+            border-bottom-left-radius: 4px;
+        }
+        .chat-products {
+            display: flex; gap: 8px; overflow-x: auto;
+            margin: -2px 0 4px; padding-bottom: 4px;
+        }
+        .chat-product {
+            flex: 0 0 130px; background: var(--paper);
+            border: 1px solid var(--line); border-radius: 10px;
+            overflow: hidden; font-size: .72rem;
+        }
+        .chat-product img { width: 100%; height: 110px; object-fit: cover; display: block; }
+        .chat-product .info { padding: 6px 8px; }
+        .chat-product .info b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-product .info span { color: var(--muted); }
+        .chat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+        .chat-actions a {
+            padding: 6px 12px; border-radius: 999px;
+            background: var(--soft); color: var(--ink);
+            font-size: .75rem; text-decoration: none; border: 1px solid var(--line);
+        }
+        .chat-actions a.wa { background: #25d366; color: #fff; border-color: #25d366; }
+        .chat-input {
+            display: flex; gap: 8px; padding: 12px;
+            border-top: 1px solid var(--line); background: var(--paper);
+        }
+        .chat-input input {
+            flex: 1; border: 1px solid var(--line); border-radius: 999px;
+            padding: 10px 14px; font-size: .88rem; font-family: inherit; outline: none;
+        }
+        .chat-input input:focus { border-color: var(--ink); }
+        .chat-input button {
+            background: var(--ink); color: var(--paper); border: none;
+            border-radius: 50%; width: 38px; height: 38px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .chat-typing { font-size: .72rem; color: var(--muted); padding: 0 4px; }
+        @media (max-width: 600px) {
+            .chat-fab { bottom: 88px; left: 16px; width: 50px; height: 50px; font-size: 1.3rem; }
+            .chat-panel {
+                bottom: 0; left: 0; right: 0;
+                width: 100%; max-width: 100%;
+                height: 80vh; max-height: 80vh;
+                border-radius: 16px 16px 0 0;
+            }
+        }
+
         /* ──────────────────────────────────────────────────────────────────
          * Comprehensive mobile pass
          * ────────────────────────────────────────────────────────────────── */
@@ -833,6 +939,24 @@
     </div>
 </div>
 
+<!-- Chat widget -->
+<button class="chat-fab" id="chatFab" aria-label="Abrir chat" title="Pregunta lo que sea">
+    <i class="bi bi-chat-dots-fill"></i>
+    <span class="badge">1</span>
+</button>
+<div class="chat-panel" id="chatPanel" role="dialog" aria-label="Chat">
+    <div class="chat-head">
+        <div class="avatar">M</div>
+        <div class="meta"><strong>MATCH</strong><br><small>Te respondemos al instante</small></div>
+        <button id="chatClose" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <form class="chat-input" id="chatForm">
+        <input type="text" id="chatInput" placeholder="Ej: iphone 15 azul" autocomplete="off" maxlength="500">
+        <button type="submit" aria-label="Enviar"><i class="bi bi-arrow-up"></i></button>
+    </form>
+</div>
+
 <!-- Image lightbox -->
 <div class="lightbox-backdrop" id="lightbox">
     <button class="close-x" id="lightboxClose">&times;</button>
@@ -1102,6 +1226,104 @@
         } else if (document.visibilityState === 'visible' && sessionStorage.getItem('lp_show_bounce_on_return')) {
             sessionStorage.removeItem('lp_show_bounce_on_return');
             setTimeout(() => openBounce('return_with_cart'), 600);
+        }
+    });
+
+    // ── Chat widget ───────────────────────────────────────────────────────
+    // Talks to /api/chat (route_chat_message in app.py). Same brain will serve
+    // the WhatsApp webhook when Meta Cloud API is wired — only the I/O changes.
+    const chatFab    = document.getElementById('chatFab');
+    const chatPanel  = document.getElementById('chatPanel');
+    const chatBody   = document.getElementById('chatBody');
+    const chatForm   = document.getElementById('chatForm');
+    const chatInput  = document.getElementById('chatInput');
+    const chatBadge  = chatFab.querySelector('.badge');
+    let chatGreeted = false;
+
+    function escHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function chatAddMsg(role, text, products, actions) {
+        const msg = document.createElement('div');
+        msg.className = 'chat-msg ' + role;
+        msg.innerHTML = escHtml(text || '');
+        if (Array.isArray(products) && products.length) {
+            const row = document.createElement('div');
+            row.className = 'chat-products';
+            row.innerHTML = products.map(p => `
+                <div class="chat-product">
+                    ${p.image_url ? `<img src="${p.image_url_thumb || p.image_url}" loading="lazy" decoding="async" alt="${escHtml(p.estilo||'')}" onerror="this.onerror=null;this.src='${p.image_url}';">` : ''}
+                    <div class="info">
+                        <b>${escHtml(p.estilo || '')}</b>
+                        <span>${escHtml(p.color || '')} · ${p.stock||0} en stock</span>
+                    </div>
+                </div>
+            `).join('');
+            msg.appendChild(row);
+        }
+        if (Array.isArray(actions) && actions.length) {
+            const wrap = document.createElement('div');
+            wrap.className = 'chat-actions';
+            wrap.innerHTML = actions.map(a => {
+                const cls = a.type === 'whatsapp' ? 'wa' : '';
+                const target = a.type === 'whatsapp' ? 'target="_blank" rel="noopener"' : '';
+                return `<a href="${a.url}" class="${cls}" ${target}>${escHtml(a.label)}</a>`;
+            }).join('');
+            msg.appendChild(wrap);
+        }
+        chatBody.appendChild(msg);
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+    function chatTyping(on) {
+        let t = document.getElementById('chatTyping');
+        if (on) {
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'chatTyping';
+                t.className = 'chat-typing';
+                t.textContent = 'MATCH esta escribiendo…';
+                chatBody.appendChild(t);
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }
+        } else if (t) t.remove();
+    }
+    function chatOpen() {
+        chatPanel.classList.add('open');
+        chatBadge.style.display = 'none';
+        if (!chatGreeted) {
+            chatAddMsg('bot', 'Hola! Soy MATCH. Dime el modelo de tu telefono y te muestro las fundas en stock. Ej: iphone 15 azul, samsung s24, mi 15t.', null, [
+                {type:'deep_link', url:'/', label:'Ver catalogo'},
+                {type:'deep_link', url:'/mayoreo', label:'Soy tienda'},
+            ]);
+            chatGreeted = true;
+            trackEvent('chat_open', {source: 'fab'});
+        }
+        setTimeout(() => chatInput.focus(), 200);
+    }
+    function chatClose() { chatPanel.classList.remove('open'); }
+    chatFab.addEventListener('click', chatOpen);
+    document.getElementById('chatClose').addEventListener('click', chatClose);
+    chatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const text = chatInput.value.trim();
+        if (!text) return;
+        chatAddMsg('user', text);
+        chatInput.value = '';
+        chatTyping(true);
+        try {
+            const r = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: text}),
+            });
+            const data = await r.json();
+            chatTyping(false);
+            chatAddMsg('bot', data.reply_text, data.products, data.actions);
+        } catch (err) {
+            chatTyping(false);
+            chatAddMsg('bot', 'No te pude responder ahorita. Pruebalo otra vez o escribenos por WhatsApp.', null, [
+                {type:'whatsapp', url:`https://wa.me/${WA_NUMBER}`, label:'Hablar con un humano'},
+            ]);
         }
     });
 
